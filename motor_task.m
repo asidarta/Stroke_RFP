@@ -1,5 +1,6 @@
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%-------------  Ananda modified this code to suit his study ---------------
+%------ Notice: Code for Active Motor Test/Training Task ---------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Clear the workspace and the screen
@@ -17,7 +18,7 @@ Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
 fprintf("Preparing connection to H-man................\n");
 
 % Connect H-MAN to the workstation
-%instance = ConnectHman();
+instance = ConnectHman();
 
 % Write in the NLog text file
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');
@@ -32,9 +33,9 @@ factorY = -1*100*1080/33;
 hold_pos(instance);
 
 % Set parameters specifically for minimum jerk production
-stiffness = num2str(5000);  % Stiffness (N/m)
-stiffxy   = num2str(100);
-damping   = num2str(0);    % Viscocity (N.s/m2)
+stiffness = num2str(3000);  % Stiffness (N/m)
+stiffxy   = num2str(400);
+damping   = num2str(20);    % Viscocity (N.s/m2)
 
 
 
@@ -42,9 +43,9 @@ damping   = num2str(0);    % Viscocity (N.s/m2)
 % Set total number of trials and randomise them.
 Ntrial = 40;
 hitScore  = 0;   % Add +10 for each time hit the target
-toshuffle = repmat(1:5,[1 Ntrial/5]);   % We have 5 target directions
+toshuffle = repmat(1:5,[1 Ntrial/5]);   % We have 5 target directions!!!
 eachTrial = Shuffle(toshuffle);
-myPath = 'C:\Users\rris\Documents\MATLAB\StrokeRFP\';
+myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 
 % Define different boolean flags for the experiment
 showCursor = true;   % to show mouse cursor during movement?
@@ -56,10 +57,10 @@ lastXpos = 0; lastYpos = 0;
 %        2: reached the target
 %        3: move back to the start
 %        4: stay and ready for next trial
-trialFlag = 0;
+trialFlag = 1;
 
 % For saving the kinematic data into a textfile
-%toSave    = double.empty();
+toSave    = double.empty();
 trialData = double.empty();
 sample = 1;
 
@@ -212,7 +213,6 @@ for i = 1:Ntrial
     fprintf('\nTRIAL %d: Moving towards the TARGET.\n', i);
 
     thePoints = [];     % Array for mouse position
-    trialFlag = 1;      % For trial stages
     hitFlag   = false;  % Have I hit the target?
     timerFlag = false;  % Is stay-at-target timer still active?
     aimless_  = true;   % Is the subject unable to reach?
@@ -367,7 +367,7 @@ for i = 1:Ntrial
                 %Screen('LineStipple', window, 1, 1, [0 0 1 1 0 0 1 1 0 0 1 1 0 0 1 1]);
             end
             
-            if (toc > 1) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if (toc > 1) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Hold for 4 seconds on the target, then proceed next to return home
                 timerFlag = false;
                 trialFlag = 3;
@@ -382,7 +382,7 @@ for i = 1:Ntrial
             %SetMouse(mouseXpos, mouseYpos, window);
             
             % Move the handle back to start using minimum jerk traj >>>>>>>>
-            movepos = moveTo(instance,0,0,2);
+            movepos = moveTo(instance,0,0,3);
             if (pos_index < length(movepos))
                 pos_index = pos_index + 1;
                 xt = round(movepos(pos_index,1));
@@ -394,7 +394,7 @@ for i = 1:Ntrial
                 % After minimum jerk has finished, the handle may not go back exactly since 
                 % the robot is quite weak. The robot is quite weak, we ensure the handle 
                 % goes back to the START first.
-                if (dist2Start > 6)
+                if (dist2Start >= 10)
                     instance.SetTarget('0','0',stiffness,stiffness,'0','0','0','0','0','0','1','0'); 
                 else
                     % Set hold position of H-man, run only once! >>>>>>>>>>>>>>
@@ -429,7 +429,7 @@ for i = 1:Ntrial
             % Lastly, flip to the screen to draw all previous commands onto the screen 
             Screen('Flip', window);
         else
-            pause(0.005);
+            pause(0.004);
         end
         
         % The position value at t-1
@@ -444,22 +444,23 @@ for i = 1:Ntrial
         %    col-8,9 : handle X,Y velocity
         %    col-10  : Hit target or missed
         %    col-11  : Emergency button status
-        trialData(sample,:) =  [ i, trialFlag, ...
-                                round(targetCtr(k,1)), round(targetCtr(k,2)), ...
-                                double(instance.current_x),  double(instance.current_y), ...
-                                double(instance.velocity_x), double(instance.velocity_y), ...
-                                hitFlag, double(instance.fb_emergency)];
+        trialData =  [ trialData; i, trialFlag, ...
+                       round(targetCtr(k,1)), round(targetCtr(k,2)), ...
+                       double(instance.current_x),  double(instance.current_y), ...
+                       double(instance.velocity_x), double(instance.velocity_y), ...
+                       hitFlag, double(instance.fb_emergency) ];
         sample = sample+1;
     end
     
-    elapsed = toc   % elapsed time per loop
-    %toSave = [toSave; trialData];  % Mega array to be saved...
+    elapsed = toc;   % elapsed time per loop
+    toSave = [toSave; trialData];  % Mega array to be saved...
     
 end
 
 
 
 %% (7) Final closure and quit.........
+null_force(instance);
 
 % DISCONNECT H-MAN SYSTEM
 instance.saveData = false;
