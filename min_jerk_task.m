@@ -18,7 +18,7 @@ Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
 fprintf("Preparing connection to H-man................\n");
 
 % Connect H-MAN to the workstation
-%instance = ConnectHman();
+instance = ConnectHman();
 
 % Write in the NLog text file
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');

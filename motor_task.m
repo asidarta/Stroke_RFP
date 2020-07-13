@@ -9,7 +9,7 @@ sca;
 %clearvars;
 
 
-%% (1) H-MAN Robot Setup......... 
+%% (1) H-MAN Robot Setup 
 % Load the DLL files
 my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\.dll files\';
 Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
@@ -32,10 +32,10 @@ factorY = -1*100*1080/33;
 % The position of the handle will be taken as ORIGIN (0,0)!
 hold_pos(instance);
 
-% Set parameters specifically for minimum jerk production
-stiffness = num2str(3000);  % Stiffness (N/m)
-stiffxy   = num2str(400);
-damping   = num2str(20);    % Viscocity (N.s/m2)
+% Set parameters specifically for minimum jerk production (updated!)
+stiffness = num2str(4000);  % Stiffness (N/m)
+stiffxy   = num2str(100);
+damping   = num2str(50);    % Viscocity (N.s/m2)
 
 
 
@@ -149,7 +149,7 @@ SetMouse(dotXpos, dotYpos, window);
 % Determine the XY position and Size for TARGET DOT in pixels. If we were
 % to use an image instead, we then have to specify the image size as a square.
 targetDist = 500;
-targetSize = 60;   % in pixel!
+targetSize = 110;   % in pixel! >>>>>>>>>>>>>>>>>>>
 
 % Let's compute the centre of the TARGET DOTS.
 targetCtr = [ dotXpos + [targetDist*cosd(330);
@@ -294,7 +294,8 @@ for i = 1:Ntrial
                 end
                 if (toc > 1.5)
                     % Hold for 1.5 seconds and NEAR enough to the target
-                    if (dist2Target < 40)
+                    % COMPARE HERE! Is the cursor close enough to the target?
+                    if (dist2Target < targetSize)
                         % Increase hit score
                         fprintf('Target hit. Well done!\n');             
                         hitScore = hitScore + 10;
@@ -382,7 +383,7 @@ for i = 1:Ntrial
             %SetMouse(mouseXpos, mouseYpos, window);
             
             % Move the handle back to start using minimum jerk traj >>>>>>>>
-            movepos = moveTo(instance,0,0,3);
+            movepos = moveTo(instance,0,0,2);
             if (pos_index < length(movepos))
                 pos_index = pos_index + 1;
                 xt = round(movepos(pos_index,1));
@@ -429,7 +430,7 @@ for i = 1:Ntrial
             % Lastly, flip to the screen to draw all previous commands onto the screen 
             Screen('Flip', window);
         else
-            pause(0.004);
+            %pause(0.002);
         end
         
         % The position value at t-1
@@ -444,8 +445,7 @@ for i = 1:Ntrial
         %    col-8,9 : handle X,Y velocity
         %    col-10  : Hit target or missed
         %    col-11  : Emergency button status
-        trialData =  [ trialData; i, trialFlag, ...
-                       round(targetCtr(k,1)), round(targetCtr(k,2)), ...
+        trialData =  [ trialData; i, trialFlag, round(targetCtr(k,1)), round(targetCtr(k,2)), ...
                        double(instance.current_x),  double(instance.current_y), ...
                        double(instance.velocity_x), double(instance.velocity_y), ...
                        hitFlag, double(instance.fb_emergency) ];
@@ -455,11 +455,17 @@ for i = 1:Ntrial
     elapsed = toc;   % elapsed time per loop
     toSave = [toSave; trialData];  % Mega array to be saved...
     
+    if(KbCheck)
+        break
+    end
 end
 
+%% Saving trial data.........
+dlmwrite(strcat(myPath, 'Trial Data\','trialdata.csv'), toSave);
 
 
 %% (7) Final closure and quit.........
+% For safety: Ensure the force is null after quiting the loop!
 null_force(instance);
 
 % DISCONNECT H-MAN SYSTEM
