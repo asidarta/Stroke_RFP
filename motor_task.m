@@ -1,12 +1,19 @@
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%------ Notice: Code for Active Motor Test/Training Task ---------
+%----- Notice: Code for Active Motor Test/Training Task with Reward -------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % Clear the workspace and the screen
 sca; 
 %clear; close all; 
 %clearvars;
+
+
+%% (0) Obtain the filename for the current trial
+[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
+
 
 
 %% (1) H-MAN Robot Setup 
@@ -15,10 +22,9 @@ my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\.dll files\';
 Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
 Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
 
-fprintf("Preparing connection to H-man................\n");
-
 % Connect H-MAN to the workstation
-instance = ConnectHman();
+fprintf("Preparing connection to H-man................\n");
+%instance = ConnectHman();
 
 % Write in the NLog text file
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');
@@ -54,7 +60,7 @@ lastXpos = 0; lastYpos = 0;
 
 % Create a flag to denote which stages of the movement it is:
 %        1: move to a target
-%        2: reached the target
+%        2: reached the target and stop
 %        3: move back to the start
 %        4: stay and ready for next trial
 trialFlag = 1;
@@ -62,7 +68,6 @@ trialFlag = 1;
 % For saving the kinematic data into a textfile
 toSave    = double.empty();
 trialData = double.empty();
-sample = 1;
 
 
 %% (3) Screen and audio preparation for Psychtoolbox!!
@@ -146,30 +151,29 @@ Xoffset = dotXpos;
 % Move the mouse position to the START (origin)
 SetMouse(dotXpos, dotYpos, window);
 
-% Determine the XY position and Size for TARGET DOT in pixels. If we were
-% to use an image instead, we then have to specify the image size as a square.
-targetDist = 500;
-targetSize = 110;   % in pixel! >>>>>>>>>>>>>>>>>>>
+% Determine target centre position and size in the pixel coordinates. Note that 
+% the distance is in metre. If image is used, you have to ensure it is square.
+targetDist = 0.15;    % Note: Unit in metre!!
+targetSize = 40;      % Note: Unit in pixel 
+targetCtr  = [ dotXpos + [ targetDist*cosd(30);
+                         targetDist*cosd(60);
+                         targetDist*cosd(90);
+                         targetDist*cosd(120);
+                         targetDist*cosd(150) ] * factorX, ...
+               dotYpos + [ targetDist*sind(30);
+                         targetDist*sind(60);
+                         targetDist*sind(90);
+                         targetDist*sind(120);
+                         targetDist*sind(150) ] * factorY ];
+         
 
-% Let's compute the centre of the TARGET DOTS.
-targetCtr = [ dotXpos + [targetDist*cosd(330);
-                         targetDist*cosd(300);
-                         targetDist*cosd(270);
-                         targetDist*cosd(240);
-                         targetDist*cosd(210)], ...
-              dotYpos + [targetDist*sind(330);
-                         targetDist*sind(300);
-                         targetDist*sind(270);
-                         targetDist*sind(240);
-                         targetDist*sind(210)] ];
-                                      
 
 %% (5) This is to set up the audio feedback part
 % Load audio file containing the Welcome Message!
-[wavedata, freq] = psychwavread( strcat(myPath,'\Audio\assess.mp3') );
-nrchannels  = size(wavedata,2); % Number of rows = number of channels.
-repetitions = 1;
-device = [];
+%[wavedata, freq] = psychwavread( strcat(myPath,'\Audio\assess.mp3') );
+%nrchannels  = size(wavedata,2); % Number of rows = number of channels.
+%repetitions = 1;
+%device = [];
 %if nrchannels < 2
 %    wavedata = [wavedata wavedata];  % Make it stereo audio
 %    nrchannels = 2;
@@ -177,7 +181,7 @@ device = [];
 
 % Open the audio device, with default mode [] (==Only playback) and freq which will return 
 % a handle to the audio device. Do this once only....
-pahandle = PsychPortAudio('Open', device, [], 0, freq, nrchannels);
+%pahandle = PsychPortAudio('Open', device, [], 0, freq, nrchannels);
 
 % Fill the audio playback buffer with the audio data 'wavedata':
 %PsychPortAudio('FillBuffer', pahandle, wavedata');
@@ -187,43 +191,45 @@ pahandle = PsychPortAudio('Open', device, [], 0, freq, nrchannels);
 
 Active = 1;
 
-while Active
-    WaitSecs(5);    % Wait a second...
-    s = PsychPortAudio('GetStatus', pahandle); % Query playback status
-    Active = s.Active;
+%while Active
+%    WaitSecs(5);    % Wait a second...
+%    s = PsychPortAudio('GetStatus', pahandle); % Query playback status
+%    Active = s.Active;
     % Stop any audio playback once done
-    if (~Active)
-        fprintf("Stop playback!\n");
-        PsychPortAudio('Stop', pahandle);
-    end
-end
+%    if (~Active)
+%        fprintf("Stop playback!\n");
+%        PsychPortAudio('Stop', pahandle);
+%    end
+%end
 
 % New audio for the positive feedback, it goes through the same subroutines
-[wavedata, freq] = psychwavread( strcat(myPath,'\Audio\coin2.mp3') );
+%[wavedata, freq] = psychwavread( strcat(myPath,'\Audio\coin2.mp3') );
 %pahandle = PsychPortAudio('Open', device, [], 0, freq, nrchannels);
-PsychPortAudio('FillBuffer', pahandle, wavedata');
+%PsychPortAudio('FillBuffer', pahandle, wavedata');
+
 
 
 
 %% (6) Core: Presentation loop, looping through ALL trials!
-for i = 1:Ntrial
+for curTrial = 1:Ntrial
     
-    tic;   % this is to calculate elapsed time per loop.....
-    k = eachTrial(i); nextTrial = 0;  
-    fprintf('\nTRIAL %d: Moving towards the TARGET.\n', i);
+    m = eachTrial(curTrial); nextTrial = false;  
+    fprintf('\nTRIAL %d: Moving towards the TARGET.\n', curTrial);
 
     thePoints = [];     % Array for mouse position
     hitFlag   = false;  % Have I hit the target?
-    timerFlag = false;  % Is stay-at-target timer still active?
+    timerFlag = true;   % Can we call the hold timer again?
     aimless_  = true;   % Is the subject unable to reach?
     pos_index = 0;      % index for instantaneous position
 
     while (~KbCheck && ~nextTrial)
         
+        tstart = tic;   % this is to calculate elapsed time per loop.....
+        
         % STAGE-1 : Moving towards the target (press any key to exit)
         % First we load in an image from file according to target location
         if (trialFlag == 1 || trialFlag == 2)
-            switch( eachTrial(i) )
+            switch( eachTrial(curTrial) )
                 case 1 
                     myImage = 'Images/monster1.png';
                 case 2 
@@ -243,10 +249,10 @@ for i = 1:Ntrial
             targetTexture = Screen('MakeTexture', window, myTarget);
         
             % Determine the XY position and Size for TARGET DOT in pixels or show an image
-            Screen('DrawTexture', window, targetTexture, [], [targetCtr(k,1)-targetSize
-                                                          targetCtr(k,2)-targetSize
-                                                          targetCtr(k,1)+targetSize
-                                                          targetCtr(k,2)+targetSize], ...
+            Screen('DrawTexture', window, targetTexture, [], [targetCtr(m,1)-targetSize
+                                                          targetCtr(m,2)-targetSize
+                                                          targetCtr(m,1)+targetSize
+                                                          targetCtr(m,2)+targetSize], ...
                                                           0, [], 0.9);
             %Screen('DrawTexture', window, targetTexture, [], [200 200 320 300], 0, [], 0.9);
         end
@@ -278,7 +284,7 @@ for i = 1:Ntrial
             thePoints = [thePoints; mouseXpos mouseYpos];
     
             % Compute the distance between the mouse CURSOR and the TARGET centre
-            dist2Target = sqrt((mouseXpos-targetCtr(k,1))^2 + (mouseYpos-targetCtr(k,2))^2);
+            dist2Target = sqrt((mouseXpos-targetCtr(m,1))^2 + (mouseYpos-targetCtr(m,2))^2);
             
             % Subject cannot be aimlessly reaching forever, there is a 6-sec timeout.
             if (toc > 6)
@@ -289,11 +295,12 @@ for i = 1:Ntrial
             
             % Note: ensure that subject is able to move beyond a certain distance.
             if (speed < 2 && dist2Start > 300)
-                if (~timerFlag)
+                if (timerFlag)
                     tic   % Start timer
+                    timerFlag = false;  % Update flag to prevent another 'tic' again
                 end
-                if (toc > 1.5)
-                    % Hold for 1.5 seconds and NEAR enough to the target
+                if (toc > 2)
+                    % Hold for 2 seconds and NEAR enough to the target
                     % COMPARE HERE! Is the cursor close enough to the target?
                     if (dist2Target < targetSize)
                         % Increase hit score
@@ -307,12 +314,12 @@ for i = 1:Ntrial
                     % Ready to move to the next stage 
                     trialFlag = 2;
                     % Update flag to allow new 'tic'
-                    timerFlag = false;   
+                    timerFlag = true;   
                 else
-                    timerFlag = true;  % Update flag to allow new 'tic'
+                    timerFlag = false;  % Update flag to prevent new 'tic'
                 end           
             else
-                timerFlag = false;   % Update flag so as to prevent 'tic' again
+                timerFlag = true;  % Update flag to allow another 'tic' again
             end
             
         end
@@ -332,15 +339,15 @@ for i = 1:Ntrial
         trajSize = size(thePoints,1);
         
         if (trialFlag == 2)
-            if (~timerFlag)
+            if (timerFlag)
                 tic   % Start timer
+                timerFlag = false;   % Update flag so as to prevent 'tic' again
                 if(showReward && hitFlag) 
-                    PsychPortAudio('Start', pahandle, repetitions, 0, 0);
+                    %PsychPortAudio('Start', pahandle, repetitions, 0, 0);
                 end
                 % Set hold position of H-man, run once! >>>>>>>>>>>>>>
                 hold_pos(instance);
             end
-            timerFlag = true;   % Update flag so as to prevent 'tic' again
 
             % Note: Do we want to provide scores & positive feedback?
             if(showReward)            
@@ -364,13 +371,13 @@ for i = 1:Ntrial
                 end
                 
                 Screen('DrawLine', window, [90 0 200], dotXpos, dotYpos, ...
-                            targetCtr(k,1), targetCtr(k,2), 5);
+                            targetCtr(m,1), targetCtr(m,2), 5);
                 %Screen('LineStipple', window, 1, 1, [0 0 1 1 0 0 1 1 0 0 1 1 0 0 1 1]);
             end
             
             if (toc > 1) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Hold for 4 seconds on the target, then proceed next to return home
-                timerFlag = false;
+                timerFlag = true;
                 trialFlag = 3;
                 fprintf('Now moving back to START position.\n');
             end
@@ -408,19 +415,18 @@ for i = 1:Ntrial
         
         % STAGE-4 : Now staying at the Start position (press any key to exit)
         if (trialFlag == 4)
-            if (~timerFlag)
+            if (timerFlag)
                 tic   % Start timer
+                timerFlag = false;   % Update flag so as to prevent 'tic' again
             end
-            timerFlag = true;   % Update flag so as to prevent 'tic' again
             Screen('DrawText', window, 'Next trial ~', 800, 100, [255,255,255,1]);
 
             % Hold for 2 seconds then move to next trial
             if (toc > 2)
                 fprintf('Ready for the next trial~\n');
-                timerFlag = false;
+                timerFlag = true;
                 % After time lapse, we are ready to go to the next trial
-                trialFlag = 1;
-                nextTrial = 1;
+                nextTrial = true;
             end
         end
         
@@ -435,25 +441,28 @@ for i = 1:Ntrial
         
         % The position value at t-1
         lastXpos = mouseXpos; lastYpos = mouseYpos;
+        % Elapsed time per loop
+        elapsed = toc(tstart);
         
         % STAGE-5 : Recording important kinematic data for each trial
         %    col-1 : Trial number
-        %    col-2 : Sample number
-        %    col-3 : Stage of movement
-        %    col-4,5 : Target X,Y position
-        %    col-6,7 : handle X,Y position
-        %    col-8,9 : handle X,Y velocity
-        %    col-10  : Hit target or missed
-        %    col-11  : Emergency button status
-        trialData =  [ trialData; i, trialFlag, round(targetCtr(k,1)), round(targetCtr(k,2)), ...
+        %    col-2 : Stage of movement
+        %    col-3,4 : Target position, angle (m)
+        %    col-5,6 : handle X,Y position
+        %    col-7,8 : handle X,Y velocity
+        %    col-9   : Hit target or missed
+        %    col-10  : Total score
+        %    col-11  : elapsed time per sample
+        %    col-12  : Emergency button status
+        trialData =  [ trialData; curTrial, trialFlag, m, m, ...
                        double(instance.current_x),  double(instance.current_y), ...
                        double(instance.velocity_x), double(instance.velocity_y), ...
-                       hitFlag, double(instance.fb_emergency) ];
-        sample = sample+1;
+                       hitFlag, hitScore, elapsed, double(instance.fb_emergency) ];
     end
     
-    elapsed = toc;   % elapsed time per loop
     toSave = [toSave; trialData];  % Mega array to be saved...
+    trialData = double.empty();  % reset the content of old trialData
+    trialFlag = 1;   % reset the trialFlag back to 1 
     
     if(KbCheck)
         break
@@ -473,7 +482,7 @@ instance.saveData = false;
 %instance.StopSystem()
 
 % Close the audio device:
-PsychPortAudio('Close', pahandle);
+%PsychPortAudio('Close', pahandle);
 
 % Clear the screen. "sca" is short hand for "Screen CloseAll"
 sca;

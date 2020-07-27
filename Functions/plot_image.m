@@ -1,0 +1,26 @@
+
+function myOutput = plot_Image(ind,xpos,ypos,imgSize)
+
+imgSize = imgSize/1000;     % adjusting the unit (mm -> metre)!
+
+myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';
+
+switch( ind )   % image index
+    case 1 
+        myImage = 'monster1.png';
+    case 2 
+        myImage = 'monster2.png';
+    case 3 
+        myImage = 'monster3.png';
+    case 4
+        myImage = 'monster4.png';
+    otherwise 
+        myImage = 'monster5.png';
+end
+
+% Load the image file first
+img = imread( strcat(myPath,myImage) );
+
+% Then plot the image on the current figure
+myOutput = image(flipud(img), 'XData', [xpos-imgSize xpos+imgSize], ...
+                              'YData', [ypos-imgSize ypos+imgSize]);
