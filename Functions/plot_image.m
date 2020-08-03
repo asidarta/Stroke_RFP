@@ -14,8 +14,11 @@ switch( ind )   % image index
         myImage = 'monster3.png';
     case 4
         myImage = 'monster4.png';
-    otherwise 
+    case 5 
         myImage = 'monster5.png';
+    case 10
+        myImage = 'move.png';
+    otherwise
 end
 
 % Load the image file first

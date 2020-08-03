@@ -16,8 +16,8 @@ sca;
 
 
 
-%% Preparation/setup......... 
-% Load the DLL files
+%% Robot-related parameters -----------------------------------------------
+% Load the H-MAN DLL files
 my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\.dll files\';
 Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
 Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
@@ -27,8 +27,6 @@ fprintf("Preparing connection to H-man................\n");
 %instance = ConnectHman();
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');
 
-
-% Robot-related parameters -----------------------------------------------
 % Robot stiffness and viscuous field!
 kxx = num2str(3500); 
 kyy = num2str(3500);
@@ -59,8 +57,11 @@ trialFlag = 1;
 % Define the SIZE of the target!
 targetSize = 15;  %>>>>>>>>>>>>>>
 
-%% Plot the X,Y data -----------------------------------------------------
+
+
+%% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 % Open an empty figure, remove the toolbar.
+SetMouse(10,10);  % Place away mouse cursor
 fig = figure(1);
 set(fig, 'Toolbar', 'none', 'Menubar', 'none');
 %child = fig.Children;
@@ -86,8 +87,8 @@ targetDist = 0.15;
 plot(  c(1,:),c(2,:), 'LineWidth',5 ); 
 hold on;
 
-% Setting cosmetic/appearance
-axis([-0.2,0.2,-0.015,0.185]);
+% Setting cosmetic/appearance of the plot
+axis([-0.2,0.2,-0.014,0.186]);
 set(gcf,'Position', get(0, 'Screensize'));  % control figure size (full screen)
 set(gcf,'Color','k');                       % set figure background color black
 set(gca,'FontSize', 14);                    % control font in the figure
@@ -111,8 +112,8 @@ targetCtr = [[ targetDist*cosd(30);
 ang = [30,60,90,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 
-% Sample frequency, timing parameters ------------------------------------
-sample_freq = 500;  % IMPORTANT that the sample freq remains the same!!!
+% Sample frequency, timing parameters
+sample_freq = 200;  % IMPORTANT that the sample freq remains the same!!!
 move_duration = 0.8;
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1; 
@@ -120,12 +121,11 @@ timerFlag = true;
 delay_at_target = 1.0;  % Hold at target position (sec)
 
 
-%% Audio and Visual FEEDBACK during training 
-% Audio playback (e.g. for reward feedback)
+%% Audio and Visual FEEDBACK during training -------------------------------
+% Define the required audio file
 [wav1, Fs] = audioread( strcat(myPath,'\Audio\assess.mp3') );
-[wav2, Fs] = audioread( strcat(myPath,'\Audio\coin2.mp3') );
 
-% Text to be displayed on the plot!
+% Text to be displayed as feedback
 txt1 = 'Next trial ~';
 txt2 = '    Good job!!';
 txt3 = 'Current score: ';
@@ -134,7 +134,7 @@ txt4 = 'Wrong movement';
 
 %% Are we reading another person's trajectory? If yes, do this!           
 % Read trajectory file. The content will be replayed to subjects during training
-trajReplay = dlmread('C:\Users\rris\Documents\MATLAB\Stroke_RFP\Trial Data\trialdata.csv');
+trajReplay = dlmread(strcat(myPath,'\Trial Data\trialdata.csv'));
 % Get a subset where the person reach forward to the target!
 reach2Target = trajReplay(trajReplay(:,2) == 1, :); 
 reachTrial = unique(trajReplay(:,1));
@@ -142,7 +142,7 @@ Ntrial     = max(unique(trajReplay(:,1)));
 
 
 
-%% Main loop: looping through ALL trials!
+%% Main loop: looping through ALL trials! ----------------------------------
 while (~KbCheck && curTrial <= Ntrial)
     
     % (1) Ensure no force first    
@@ -150,10 +150,13 @@ while (~KbCheck && curTrial <= Ntrial)
     null_force(instance);
     fprintf('\nTRIAL %d\n', curTrial);
         
-    % (2) Load the trajectory trial-by-trial... Plot the current TARGET position.
-    out1  = trajReplay((trajReplay(:,1)==curTrial & trajReplay(:,2)==1), :);
+    % (2) Load the trajectory trial-by-trial...
+    out1  = trajReplay(trajReplay(:,1)==curTrial, :);
     out1(length(out1),:) = [];
     angle = ang(unique(out1(:,3)));
+    reward_status = unique(out1(out1(:,2)==3,9));
+ 
+    % Plot the current TARGET position.
     fprintf('   Presenting target location...\n');
     %mytarget = plot( c(1,:)+targetDist*cosd(angle),...
                       %c(2,:)+targetDist*sind(angle),'LineWidth',5);                 
@@ -161,16 +164,17 @@ while (~KbCheck && curTrial <= Ntrial)
                            c(2,:)+targetDist*sind(angle), targetSize );
 
     fprintf('   Presenting trajectory...\n');
-    plot(out1(:,5),out1(:,6),'w.');    
+    %plot(out1(:,5),out1(:,6),'w.');    
 
-    % Convert position into string for robot command. Convert to mm unit!
-    Xpos = num2str(out1(:,5)*1000); 
-    Ypos = num2str(out1(:,6)*1000);
+    % Convert position into string for robot command, for trial flag = 1. 
+    % Convert to mm unit!
+    Xpos = num2str(out1(out1(:,2)==1,5)*1000); 
+    Ypos = num2str(out1(out1(:,2)==1,6)*1000);
             
     % (3) Present that trajectory with minimum jerk! Note that I put a
     % pause inside which corresponds to sample duration for the replay!
-    for j = 1:length(out1)
-        p1 = plot(instance.current_x, instance.current_y, 'g.', 'MarkerSize', 40);
+    for j = 1:length(out1(out1(:,2)==1))
+        p1 = plot(instance.current_x, instance.current_y, 'w.', 'MarkerSize', 50);
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0');
         pause(out1(j,11));
@@ -180,33 +184,33 @@ while (~KbCheck && curTrial <= Ntrial)
         delete(p1);
     end
         
-    %hold_pos(instance);
+    hold_pos(instance);
 
     % (4) Hold for 2 sec, and show REWARD feedback if any...
-    reward_status = unique(trajReplay((trajReplay(:,1)==curTrial & trajReplay(:,2)==3),9));
-    score = unique(trajReplay((trajReplay(:,1)==curTrial & trajReplay(:,2)==3),10));
+    score = unique(out1(out1(:,2)==3,10));
     score = num2str(score);
     if (reward_status)
-        t2 = text(-0.05,0.18,txt2,'FontSize',50,'Color','g');
-        t3 = text(-0.051,0.16,strcat(txt3,score),'FontSize',49,'Color','g');
-        sound(wav2, Fs)  % Positive feedback
+        mymsg = [txt2, newline, txt3, ' ', score];
+        t2 = text(-0.05,0.17,mymsg,'FontSize',49,'Color','g');
+        play_KR(myPath);  % Positive feedback
+        pause(0.1);
         pause_me(delay_at_target);
     else
-        t4 = text(-0.051,0.16,txt4,'FontSize',55,'Color','r');
+        t4 = text(-0.051,0.16,' ','FontSize',55,'Color','r');
     end
     
     % (5) Minimum jerk haptic targets to zero (START) position
-    out2 = min_jerk([instance.current_x*1000 instance.current_y*1000 0], ...
-                    [0 0 0], t);
+    out2 = min_jerk([instance.current_x*1000 instance.current_y*1000 0], [0 0 0], t);
     fprintf('   Moving back to start position...\n');
-    
+    pause_me(delay_at_target);
+        
     % Convert position into string for robot command.
     Xpos = num2str(out2(:,1)); 
     Ypos = num2str(out2(:,2));
     
     % (6) Move handle back to ORIGIN, zero position 
     for j = 1:length(out2)
-        p2 = plot(instance.current_x, instance.current_y, 'g.', 'MarkerSize', 40);
+        p2 = plot(instance.current_x, instance.current_y, 'w.', 'MarkerSize', 50);
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
         pause(1/sample_freq);
@@ -223,11 +227,12 @@ while (~KbCheck && curTrial <= Ntrial)
     % Display the trajectory for our info only!
     %plot(out2(:,1)./1000, out2(:,2)./1000, 'g.');
     
-    % (8) Clear the figure from old position data. First, grab a handler to the
-    % children part of the figure!
-    mychild  = fig.Children.Children;
-    pause_me(0.5);
-    delete(mychild(1:4));
+    % (8) Clear the figure from old position data. First, obtain the handler to the
+    % children part of the figure, then delete the components!
+    pause_me(3);
+    mychild = fig.Children.Children;
+    delete(mychild(1:length(mychild)-1));
+
     
     % (9) CONTINUE TO THE NEXT TRIAL.....
     t1 = text(-0.03,0.16,txt1,'FontSize',55,'Color','w');

@@ -16,8 +16,8 @@ sca;
 
 
 
-%% Preparation/setup......... 
-% Load the DLL files
+%% Robot-related parameters -----------------------------------------------
+% Load the H-MAN DLL files
 my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\.dll files\';
 Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
 Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
@@ -27,22 +27,20 @@ fprintf("Preparing connection to H-man................\n");
 instance = ConnectHman();
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');
 
-
-% Robot-related parameters -----------------------------------------------
 % Robot stiffness and viscuous field!
 kxx = num2str(3500); 
 kyy = num2str(3500);
 kxy = num2str(0); 
 kyx = num2str(0);
-bxx = num2str(50);  
-byy = num2str(20);
+bxx = num2str(0);  
+byy = num2str(0);
 
 % H-MAN 'Assistive' mode if subject is too weak..
 k_asst = num2str(3000); 
 
 
 % Trial-related parameters -----------------------------------------------
-Ntrial = 40;
+Ntrial = 100;
 toshuffle = repmat(1:5,[1 Ntrial/5]);   % We have 5 target directions!!
 eachTrial = Shuffle(toshuffle);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
@@ -59,8 +57,9 @@ lastXpos = 0; lastYpos = 0;
 trialFlag = 1;
 
 
-%% Plot the X,Y data -----------------------------------------------------
+%% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 % Open an empty figure, remove the toolbar.
+SetMouse(10,10);  % Place away mouse cursor
 fig = figure(1);
 set(fig, 'Toolbar', 'none', 'Menubar', 'none');
 %mychild = fig.Children;
@@ -86,8 +85,8 @@ plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
       c(1,:),c(2,:), 'LineWidth',5);
 hold on;
 
-% Setting cosmetic/appearance
-ylim([-0.01,0.19]);
+% Setting cosmetic/appearance of the plot
+ylim([-0.02,0.18]);
 set(gcf,'Position', get(0, 'Screensize'));  % control figure size (full screen)
 set(gcf,'Color','k');                       % set figure background color black
 set(gca,'FontSize', 14);                    % control font in the figure
@@ -112,8 +111,8 @@ ang = [30,60,90,120,150];  % Angle (degree) w.r.t positive X-axis.
 
            
 % Sample frequency, timing parameters ------------------------------------
-sample_freq = 500;
-move_duration = 0.7;
+sample_freq = 200;
+move_duration = 1.5;
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1; 
 timerFlag = true;
@@ -140,7 +139,7 @@ while (curTrial <= Ntrial) && (~KbCheck)
 
     % (3) Minimum jerk haptic targets generation
     out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t);
-    fprintf('   Producing reference trajectory.\n');
+    fprintf('   1. Producing reference trajectory.\n');
     % Convert position into string for robot command
     Xpos = num2str(out(:,1)); Ypos = num2str(out(:,2));
     
@@ -199,23 +198,24 @@ while (curTrial <= Ntrial) && (~KbCheck)
     % (7) Set zero force. Pause for 2 seconds at the target location.
     hold_pos(instance);
 
-    % (8) Play BEEP tone with a certain duration and frequency
+    % (8) Play BEEP tone and disply MOVE cue...
     %pause_me(1);  
+    goCue = plot_image(10, 0, 0.1, 20);
     play_tone(1250, 0.2);
-    pause_me(2);  
+    pause_me(delay_at_target);
+    pause_me(delay_at_target);  
     
     
-
     % PART 2: Let the user moves the handle to a target position ----------------------
     % (1) Preparation. Produce zero force.   
     trialFlag = 1; 
     %a = []; 
-    fprintf('   Now joint position matching\n');
+    fprintf('   2. Now joint position matching\n');
     j = 1;
     null_force(instance);
-    incrStiff = 0;     % stiffness ramping counter
-    t_active = tic;  % timer for active reaching
-
+    incrStiff = 40;     % stiffness ramping counter  (????????)
+    t_active = tic;     % timer for active reaching
+    delete(goCue);      % remove go visual cue
     
     while (~KbCheck)
         %plot(instance.current_x, instance.current_y, 'r.');
@@ -245,7 +245,7 @@ while (curTrial <= Ntrial) && (~KbCheck)
         if ( dist2Start <= 0.1 )
             if ( toc(t_active) > 4 )
                 if (~incrStiff)
-                	fprintf("   Assistive mode is ON\n");
+                	fprintf("   3a. Assistive mode is ON\n");
                 end
                 if (incrStiff > str2double(k_asst))  % Assistive mode
                     incrStiff = str2double(k_asst);
@@ -260,13 +260,13 @@ while (curTrial <= Ntrial) && (~KbCheck)
         else
             if( speed < 1 )
                 if (timerFlag)
-                    fprintf("   Good. Handle moves far enough...\n");
+                    fprintf("   3. Good. Handle moves far enough...\n");
                     tic;
                     timerFlag = false;
                 end
                 % Once the hand is stationary for 2 seconds, then do this....
                 if (toc > 2)
-                    fprintf("   Hold position remains for 2 sec!\n");
+                    fprintf("   4. Hold position remains for 2 sec!\n");
                     timerFlag = true;
                     break
                 end
@@ -291,7 +291,7 @@ while (curTrial <= Ntrial) && (~KbCheck)
     
     % Hand position moves back to the center.
     trialFlag = 3;
-    fprintf('   Handle moves back to the origin\n');
+    fprintf('   6. Handle moves back to the origin\n');
 
     % Minimum jerk haptic targets to zero (START) position
     out4 = min_jerk([instance.current_x*1000 instance.current_y*1000 0], ... 
@@ -315,7 +315,6 @@ while (curTrial <= Ntrial) && (~KbCheck)
     
     if (~isempty(trialData))
         % Plot this trajectory. Save trial data into a mega array;    
-        %h4 = plot(trialData(:,5), trialData(:,6), 'r.');
         toSave = [toSave; trialData];
         trialData = double.empty();
     end
@@ -325,15 +324,15 @@ while (curTrial <= Ntrial) && (~KbCheck)
 
     % (7) Pause at the zero position for 2 seconds
     pause_me(2);
-    fprintf('   Moving to NEXT TRIAL!\n');
+    fprintf('   7. Moving to NEXT TRIAL!\n');
     
     % (8) Ready to continue to the next trial...
     curTrial = curTrial + 1;
     
-    % (9) Clear the figure from old position data. First, grab a handler to the
-    % children part of the figure!
+    % (9) Clear the figure from old position data. First, obtain the handler to the
+    % children part of the figure, then delete the components!
     mychild  = fig.Children.Children;
-    delete(mychild(1:3));
+    delete(mychild(1:length(mychild)-6));
 
 end
 
