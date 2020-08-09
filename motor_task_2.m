@@ -37,25 +37,26 @@ byy = num2str(20);
 
 
 % Trial-related parameters -----------------------------------------------
-Ntrial = 10;
-hitScore  = 0;   % Add +10 for each time hit the target
-toshuffle = repmat(1:5,[1 Ntrial/5]);   % We have 5 target directions!!!
+Ntrial = 8;
+hitScore  = 0;   % Add +10 for each success
+toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!!
 eachTrial = Shuffle(toshuffle);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 trialData = double.empty();
-toSave = double.empty();
-lastXpos = 0; lastYpos = 0;
+toSave = double.empty();  toSave2 = double.empty();
+lastXpos = instance.current_x; lastYpos = instance.current_y;
 
 % Define different boolean flags for the experiment
 showCursor = true;   % to show mouse cursor during movement?
 showReward = true;   % to show score with feedback?
 
 % Create a flag to denote which stages of the movement it is:
+%        0: hand still stationary at the start
 %        1: move to a target
 %        2: reached the target and stop
 %        3: move back to the start
 %        4: stay and ready for next trial
-trialFlag = 1;
+trialFlag = 0;
 
 % Define the SIZE of the target!
 targetSize = 15;  %>>>>>>>>>>>>>>
@@ -64,15 +65,13 @@ targetSize = 15;  %>>>>>>>>>>>>>>
 targetDist = 0.15;
 targetCtr = [[ targetDist*cosd(30);
                targetDist*cosd(60);
-               targetDist*cosd(90);
                targetDist*cosd(120);
                targetDist*cosd(150)], ...
              [ targetDist*sind(30);
                targetDist*sind(60);
-               targetDist*sind(90);
                targetDist*sind(120);
                targetDist*sind(150)]] ;
-ang = [30,60,90,120,150];  % Angle (degree) w.r.t positive X-axis.
+ang = [30,60,  120,150];  % Angle (degree) w.r.t positive X-axis.
 
 
 
@@ -95,15 +94,11 @@ ax.Position = [left bottom ax_width ax_height];
 % Load and place background image on the plot!
 bg = imread( strcat(myPath,'\Images\background.jpg') );
 image(bg,'XData',[-0.2 0.2],'YData',[-0.01 0.2]);
+set(gca,'visible','off')  % This removes the border
 hold on;
 
 % Create circular target traces
 c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
-%plot( %c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
-      %c(1,:)+targetDist*cosd(60), c(2,:)+targetDist*sind(60), ... 
-      %c(1,:)+targetDist*cosd(90), c(2,:)+targetDist*sind(90), ...
-      %c(1,:)+targetDist*cosd(120),c(2,:)+targetDist*sind(120), ...
-      %c(1,:)+targetDist*cosd(150),c(2,:)+targetDist*sind(150), ...
 plot( c(1,:),c(2,:), 'LineWidth',5 ); 
 
 % Setting cosmetic/appearance of the plot
@@ -127,7 +122,7 @@ move_duration = 0.8;
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1; 
 timerFlag = true;
-delay_at_target = 2.5;  % Hold at target position (sec)
+delay_at_target = 2;  % Hold at target position (sec)
 
 
 %% Audio and Visual FEEDBACK during training  -------------------------------
@@ -142,8 +137,9 @@ txt4 = 'Try again...';
 
 
 
+
 %% Main loop: looping through ALL trials! ----------------------------------
-pause(2.0);
+pause_me(2.0);
 for curTrial = 1:Ntrial
 
     % Preparting current target position, then plot the target location.
@@ -161,21 +157,26 @@ for curTrial = 1:Ntrial
     % Plot the TARGET POSITION so as to show the subjects
     pause_me(1.5);
     %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
-    plot_image( m, c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2), targetSize );    
+    plot_image( m, targetCtr(m,1), targetCtr(m,2), targetSize );    
     pause_me(1.5);
 
+    % Play BEEP tone and disply MOVE cue for 1.5 sec!!
+    goCue = plot_image(10, 0, 0.1, 30);
+    play_tone(1250, 0.18);
+    pause_me(1.25);
+    delete(goCue);  % delete from the plot after a sufficient time
+    
     while (~KbCheck && ~nextTrial)
     
+        % Data rate, pause in-between loop
+        tstart = tic;   % this is to calculate elapsed time per loop
+        pause(1/sample_freq);
+        
         % Obtain H-MAN handle position in real-time and plot it. Convert to mm unit!
         myXpos = instance.current_x; 
         myYpos = instance.current_y;
-        
-        % Pause in-between loop
-        tstart = tic;   % this is to calculate elapsed time per loop.....
-        pause(0.005);
-        
-        % Compute the mouse speed, based on elapsed time, not sampling rate
-        speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2)*1000;
+        % Estimate the cursor speed (in mm, and use sample rate).........
+        speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) *1000*sample_freq;
         % Compute distance between handle-Start in real world coordinate
         dist2Start  = sqrt(myXpos^2 + myYpos^2);
 
@@ -200,16 +201,10 @@ for curTrial = 1:Ntrial
         % STAGE-1 : Moving towards the target (press any key to exit)
         case 1
             if (aimless_)
-                % Play BEEP tone and disply MOVE cue...
                 aimless_ = false;
-                goCue = plot_image(10, 0, 0.1, 30);
-                play_tone(1250, 0.2);
-                pause_me(1.8);
-                delete(goCue);  % delete from the plot after a sufficient time
                 tic;   % Start timer!
-                null_force(instance);   % RELEASE the handle holding force;
             end
-       
+            
             % Compute distance between handle-Target in real world coordinate
             dist2Target = sqrt((myXpos-targetCtr(m,1))^2 + (myYpos-targetCtr(m,2))^2);
             % Record mouse position in in an array
@@ -230,8 +225,8 @@ for curTrial = 1:Ntrial
                     tic;     % Start timer
                 end
                 % If the cursor is close enough to the TARGET, check if the movement 
-                % is almost stopping. Then prepare to HOLD for 2 seconds.
-                if (speed < 0.1)
+                % is SLOW enough, almost stopping. Then prepare to HOLD for 2 seconds.
+                if (speed < 10)
                     timerFlag = false;   % Update flag to allow tic again
                 else
                     timerFlag = true;   % Update flag to allow tic again
@@ -273,7 +268,7 @@ for curTrial = 1:Ntrial
                         % Show the text on the screen as positive feedback!
                         txt2  = play_KR(myPath);
                         mymsg = [txt2, newline, txt3, ' ', int2str(hitScore)];
-                        text(-0.05,0.18,mymsg,'FontSize',50,'Color',hitCol,'FontWeight','bold');
+                        text(-0.05,0.175,mymsg,'FontSize',45,'Color',hitCol,'FontWeight','bold');
                     else
                         % No need negative feedback!
                         text(-0.04,0.18,' ');
@@ -286,7 +281,7 @@ for curTrial = 1:Ntrial
                     refline = line([0,targetCtr(m,1)],[0,targetCtr(m,2)],'Color','w','LineWidth',2); 
                     pause_me(delay_at_target);
                     % Using children handler, remove performance feedback after a while!!
-                    mychild  = fig.Children.Children
+                    mychild  = fig.Children.Children;
                     delete(mychild(1:3));
                 end
             end
@@ -327,19 +322,28 @@ for curTrial = 1:Ntrial
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
             end        
-            % Hold for 1.5 second then move to next trial
+            % Hold for 1.5 second at the Start position, then move to next trial
             if (toc > 1.5)
                 fprintf('   Ready for the next trial~\n');
                 % Update flag so as to allow 'tic'
                 timerFlag = true;
                 % After time lapse, we are ready to go to the next trial
                 nextTrial = true;
-                % Go back to first stage
-                trialFlag = 1;
-                % Delete the old cursor indicator from the figure...
-            end   
+                trialFlag = 0;  %%% added
+            end
+            
+        % STAGE 0: check if the handle has left the Start position?
+        otherwise
+            if (timerFlag)
+                timerFlag = false;    % Update flag so as to prevent 'tic' again
+                null_force(instance); % RELEASE the handle holding force; >>>>>>>>>>>
+            end
+            if (dist2Start > 0.004 && speed > 10)
+                trialFlag = 1;  fprintf("   Handle starts moving!\n");
+                timerFlag = true;     % Reset flag to allow new 'tic'
+            end       
         end
-        
+        %fprintf("%d %f %f \n", trialFlag,dist2Start,speed); 
         % The position value at t-1
         lastXpos = myXpos;   lastYpos = myYpos;
         
@@ -361,21 +365,37 @@ for curTrial = 1:Ntrial
                        double(instance.velocity_x), double(instance.velocity_y), ...
                        hitFlag, hitScore, elapsed, double(instance.fb_emergency)  ];
     end
-                   
+    
+    % Updated: This is to compute KINEMATIC measures ----------------------
+    if ~isempty(trialData)
+        [ t_meanpd_endpoint, t_area_endpoint, t_pd_endpoint, t_pdmaxv_endpoint, t_pd100_endpoint, ...
+            t_pd200_endpoint, t_pd300_endpoint, t_pdend_endpoint, t_iadmaxv_endpoint, t_iad100_endpoint, ...
+            t_meanpd_target, t_area_target, t_pd_target, t_pdmaxv_target, t_pd100_target, ...
+            t_pd200_target, t_pd300_target, t_pdend_target, t_iadmaxv_target, t_iad100_target, ...
+            stpx, stpy, PeakVel ] =  get_Kinematic( trialData, targetCtr(m,:), sample_freq );
+   
+        toSave2 = [toSave2; [curTrial, dist2Target, t_meanpd_endpoint, t_area_endpoint, t_pd_endpoint, ...
+                           t_pdmaxv_endpoint, t_pd100_endpoint, t_pd200_endpoint, t_pd300_endpoint, ...
+                           t_pdend_endpoint, t_iadmaxv_endpoint, t_iad100_endpoint, t_meanpd_target, ...
+                           t_area_target, t_pd_target, t_pdmaxv_target, t_pd100_target, t_pd200_target, ...
+                           t_pd300_target, t_pdend_target, t_iadmaxv_target, t_iad100_target, stpx, stpy, PeakVel ] ];
+    end
+    
+    % We also appendd trajectory data to the Mega Array to be saved!
+    toSave = [toSave; trialData]; 
+    trialData = double.empty();  
+    
     % Clear the figure from old position data. First, obtain the handler to the
     % children part of the figure, then delete the components!
     mychild  = fig.Children.Children;
-    delete(mychild(1:length(mychild)-1));
-    
+    delete(mychild(1:length(mychild)-2));
+
     % CONTINUE TO THE NEXT TRIAL.....
-    t1 = text(-0.03,0.16,txt1,'FontSize',55,'FontWeight','bold','Color','w');
+    t1 = text(-0.04,0.16,txt1,'FontSize',55,'FontWeight','bold','Color','w');
     pause(0.01); 
     curTrial = curTrial + 1; 
-    toSave = [toSave; trialData];  % Mega array to be saved...
-    trialData = double.empty();    % reset the content of old trialData   
-
-    pause_me(delay_at_target);  
-    delete(t1);   % Delete text after showing
+    pause_me(delay_at_target);     % Let's pause for a while...
+    delete(t1);                    % then remove the text from the screen
     
     if (KbCheck)
         break; % Shall bail out if we press any key!
@@ -385,8 +405,8 @@ end
 
 
 %% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\','trialdata.csv'), toSave);
-
+dlmwrite(strcat(myPath, 'Trial Data\','traj.csv'), toSave);
+dlmwrite(strcat(myPath, 'Trial Data\','trial.csv'), toSave2);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 

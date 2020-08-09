@@ -18,12 +18,17 @@ switch( ind )   % image index
         myImage = 'monster5.png';
     case 10
         myImage = 'move.png';
+    case 11
+        myImage = 'relax.png';
     otherwise
 end
 
 % Load the image file first
-img = imread( strcat(myPath,myImage) );
+[img, map, alphachannel] = imread( strcat(myPath,myImage) );
+%image(img, 'AlphaData', alphachannel);
 
-% Then plot the image on the current figure
+
+% Then plot the image on the current figure. Remember to flip!
 myOutput = image(flipud(img), 'XData', [xpos-imgSize xpos+imgSize], ...
-                              'YData', [ypos-imgSize ypos+imgSize]);
+                              'YData', [ypos-imgSize ypos+imgSize], ...
+                              'AlphaData', flipud(alphachannel));

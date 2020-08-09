@@ -12,7 +12,7 @@ sca;
 
 
 %% (0) Obtain the filename for the current trial
-[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
+%[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
 
 
 
@@ -24,7 +24,7 @@ Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
 
 % Connect H-MAN to the workstation
 fprintf("Preparing connection to H-man................\n");
-instance = ConnectHman();
+%instance = ConnectHman();
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');
 
 % Robot stiffness and viscuous field!
@@ -41,13 +41,13 @@ k_asst = num2str(3000);
 
 % Trial-related parameters -----------------------------------------------
 Ntrial = 100;
-toshuffle = repmat(1:5,[1 Ntrial/5]);   % We have 5 target directions!!
+toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!
 eachTrial = Shuffle(toshuffle);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 
 trialData = double.empty();
 toSave = double.empty();
-lastXpos = 0; lastYpos = 0;
+lastXpos = instance.current_x; lastYpos = instance.current_y;
 
 % Create a flag to denote which stages of the movement it is:
 %        5: robot moves to a target (reference traj)
@@ -79,7 +79,6 @@ c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
 targetDist = 0.15;
 plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
       c(1,:)+targetDist*cosd(60), c(2,:)+targetDist*sind(60), ... 
-      c(1,:)+targetDist*cosd(90), c(2,:)+targetDist*sind(90), ...
       c(1,:)+targetDist*cosd(120),c(2,:)+targetDist*sind(120), ...
       c(1,:)+targetDist*cosd(150),c(2,:)+targetDist*sind(150), ...
       c(1,:),c(2,:), 'LineWidth',5);
@@ -99,20 +98,18 @@ daspect([1 1 1])                            % maintaining aspect ratio
 % Let's compute the centre of the TARGET locations (convert to mm unit)
 targetCtr = [[ targetDist*cosd(30);
                targetDist*cosd(60);
-               targetDist*cosd(90);
                targetDist*cosd(120);
                targetDist*cosd(150)] * 1000, ...
              [ targetDist*sind(30);
                targetDist*sind(60);
-               targetDist*sind(90);
                targetDist*sind(120);
                targetDist*sind(150)] * 1000] ;
-ang = [30,60,90,120,150];  % Angle (degree) w.r.t positive X-axis.
+ang = [30,60,  120,150];  % Angle (degree) w.r.t positive X-axis.
 
            
 % Sample frequency, timing parameters ------------------------------------
 sample_freq = 200;
-move_duration = 1.5;
+move_duration = 1.2;
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1; 
 timerFlag = true;
@@ -121,7 +118,7 @@ delay_at_target = 1.0;  % Hold at target position (sec)
 
 
 %% TRIAL LOOP = Keep looping until Ntrial is met OR a key is pressed
-pause(2.0)
+pause_me(2.0)
 while (curTrial <= Ntrial) && (~KbCheck)
     
     m = eachTrial(curTrial);  
@@ -219,7 +216,7 @@ while (curTrial <= Ntrial) && (~KbCheck)
     
     while (~KbCheck)
         %plot(instance.current_x, instance.current_y, 'r.');
-        pause(1/sample_freq);
+        pause_me(1/sample_freq);
 
         % Computing speed (Robot velocity readout is not good!)
         speedX = (instance.current_x - lastXpos);   
@@ -249,11 +246,11 @@ while (curTrial <= Ntrial) && (~KbCheck)
                 end
                 if (incrStiff > str2double(k_asst))  % Assistive mode
                     incrStiff = str2double(k_asst);
-                end
+                end                                    
                 instance.SetTarget( num2str(end_X),num2str(end_Y),...
                                     num2str(incrStiff/2),num2str(incrStiff),...
-                                    '0','0','20','0','0','0','1','0' );     
-                incrStiff = incrStiff + 0.5;
+                                    '0','0','10','10','0','0','1','0' );     
+                incrStiff = incrStiff + 1;
             end
         % If far enough, it means subjects are capable of still moving.
         % Check if they have stopped moving
