@@ -41,7 +41,7 @@ byy = num2str(20);
 hitScore  = 0;   % Add +10 for each time hit the target
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 % Read trajectory file. The content will be replayed to subjects during training
-trajReplay = dlmread(strcat(myPath,'\Trial Data\trialdata.csv'));
+trajReplay = dlmread(strcat(myPath,'\Trial Data\0.csv'));
 % Get a subset where the person reach forward to the target!
 reach2Target = trajReplay(trajReplay(:,2) == 1, :); 
 reachTrial = unique(trajReplay(:,1));
@@ -97,7 +97,7 @@ targetDist = 0.15;
 plot(  c(1,:),c(2,:), 'LineWidth',5 ); 
 
 % Setting cosmetic/appearance of the plot
-axis([-0.2,0.2,-0.014,0.186]);
+axis([-0.2,0.2,-0.014,0.186]);              % axis limits, adjusted to LCD aspect ratio
 set(gcf,'Position', get(0, 'Screensize'));  % control figure size (full screen)
 set(gcf,'Color','k');                       % set figure background color black
 set(gca,'FontSize', 14);                    % control font in the figure

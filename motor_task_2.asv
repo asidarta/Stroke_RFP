@@ -47,7 +47,7 @@ toSave = double.empty();  toSave2 = double.empty();
 lastXpos = instance.current_x; lastYpos = instance.current_y;
 
 % Define different boolean flags for the experiment
-showCursor = false;   % to show mouse cursor during movement?
+showCursor = true;   % to show mouse cursor during movement?
 showReward = true;   % to show score with feedback?
 
 % Create a flag to denote which stages of the movement it is:
@@ -92,9 +92,9 @@ ax_height = outerpos(4) - ti(2)/2 - ti(4)/2;
 ax.Position = [left bottom ax_width ax_height];
 
 % Load and place background image on the plot!
-bg = imread( strcat(myPath,'\Images\background.jpg') );
-image(bg,'XData',[-0.2 0.2],'YData',[-0.01 0.2]);
-set(gca,'visible','off')  % This removes the border
+%bg = imread( strcat(myPath,'\Images\background.jpg') );
+%image(bg,'XData',[-0.2 0.2],'YData',[-0.01 0.2]);
+%set(gca,'visible','off')  % This removes the border
 hold on;
 
 % Create circular target traces
@@ -102,7 +102,7 @@ c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
 plot( c(1,:),c(2,:), 'LineWidth',5 ); 
 
 % Setting cosmetic/appearance of the plot
-axis([-0.2,0.2,-0.014,0.186]);              % axis limits, adjusted to LCD aspect ratio
+axis([-0.2,0.2,-0.014,0.186]);              % axis limits according to LCD size
 set(gcf,'Position', get(0, 'Screensize'));  % control figure size (full screen)
 set(gcf,'Color','k');                       % set figure background color black
 set(gca,'FontSize', 14);                    % control font in the figure
@@ -221,7 +221,7 @@ for curTrial = 1:Ntrial
         
             % Subject cannot be aimlessly reaching forever
             if (dist2Start < 0.10) 
-                if (toc > 5.0)   % this is 5-sec timeout!!!
+                if (toc > 6)   % this is 6-sec timeout!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
                     text(-0.03,0.16,txt4,'FontSize',50,'Color','r','FontWeight','bold');

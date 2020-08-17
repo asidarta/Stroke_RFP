@@ -250,7 +250,7 @@ while (curTrial <= Ntrial) && (~KbCheck)
                 instance.SetTarget( num2str(end_X),num2str(end_Y),...
                                     num2str(incrStiff/2),num2str(incrStiff),...
                                     '0','0','10','10','0','0','1','0' );     
-                incrStiff = incrStiff + 1;
+                incrStiff = incrStiff + 10;
             end
         % If far enough, it means subjects are capable of still moving.
         % Check if they have stopped moving
