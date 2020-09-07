@@ -17,7 +17,7 @@ Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
 Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
 
 % Connect H-MAN to the workstation
-instance = ConnectHman();
+instance = ConnectHmanV1();
 
 % Write in the NLog text file
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');

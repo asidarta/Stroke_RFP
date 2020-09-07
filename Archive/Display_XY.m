@@ -3,31 +3,21 @@
 %%% Note: This code is independent of PsychToolBox.
 
 
-%clear; clc
+clear; clc
 
 % Load the DLL files
-my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\.dll files\';
+my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\V2\';
 Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
 Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
 
-% Connect H-MAN to the workstation
-%instance = ConnectHman();
+% Connect PC to H-MAN. Use this new function to also prepare the setting.
+[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 %% Write in the NLog text file
 NLog.Common.InternalLogger.Info('Connection with H-MAN established');
 
 
-%% Saving the position data
-% Initialize the data saving process
-%instance.saveData = true;
-%pause(5) % pause the script for 5 seconds
-% Check if the data is saving
-%instance.tempData
-
-% Save the data in a MATLAB variable
-%data = ToArray(GetRange(instance.tempData,0,instance.tempData.Count));
-
-% Define the workspace for H-man for the purpose of plotting.
+%% Define the workspace for H-man for the purpose of plotting.
 minX = -0.15;  maxX = 0.15;
 minY = -0.05;  maxY = 0.25;
 
@@ -44,48 +34,56 @@ Xch_size = 40;
 kxx = 2000;   % N/m stiffness
 toSave = double.empty(); 
 
-%% Plot XY position in space
+
+
+%% Loop for using H-man
+
+instance.save_data = true;   % Initialize the data saving process
+pause(2)
+
 while (1)
     % Read instantaneous position (in metre)
     tic;
-    posX = instance.current_x;
-    posY = instance.current_y;
+    posX = instance.hman_data.location_X;
+    posY = instance.hman_data.location_Y;
+    fprintf('My position (cm) is %f and %f\n', 100*posX, 100*posY);
     pause(1/fSample); 
-    %plot(posX, posY, 'r.', 'MarkerSize', 20); hold on;
-    %fprintf('Current posX = %d, posXr = %d\n',posX,posY);
 
-    %instance.SetTarget( num2str( sign(posRot(1))*Xch_size), num2str(posRot(2)), ...
-    if ( abs(posX) > Xch_size/1000 )  % note unit change!
-        plot(posX, posY, 'r.', 'MarkerSize', 20);
-        %fprintf('Pushing channel\n');
-        instance.SetTarget( num2str( sign(posX)*Xch_size), num2str(posY), ...
-                            num2str(kxx),'0','0','0','0','0','0','0','1','0' ); 
+    if (abs(posX*100) > 5)
+        instance.SetTarget(num2str(1000*posX),num2str(1000*posY),'500','500',...
+                           '0','0','20','20','0','0','1','0');
     else
-        plot(posX, posY, 'g.', 'MarkerSize', 20);
-        %fprintf('Channel off...\n');
-        instance.SetTarget( '0','0','0','0','0','0','0','0','0','0','1','0' ); 
+        null_force(instance)
     end
-    
     % Detect key press then bail out
     isKeyPressed = ~isempty(get(hfig,'CurrentCharacter'));
     if isKeyPressed
         break
     end
     
-    delay  = toc;
-    toSave = [toSave; [posX, posY, delay]];
-    
+    delay = toc;
 end
 
 null_force(instance);
 close all;
 
-% Save the trajectory data......
-dlmwrite(strcat(myPath, 'Trial Data\','m.csv'), toSave);
 
-%% Stop the saving data process
-%instance.saveData = false;
+%% Saving the position data
+% Get H-MAN data from the temporary variable in a MATLAB variable
+data = ToArray(GetRange(instance.temp_hman_data_list,0,instance.temp_hman_data_list.Count));
+
+% Stop the saving data process
+instance.save_data = false;
+
+% Save data as an array
+for tem = 1:data.Length
+    saveHMan(tem,1) = data(tem).location_X;
+    saveHMan(tem,2) = data(tem).location_Y;
+end
+
+% Plot all
+plot(saveHMan(:,1)*1000, saveHMan(:,2)*1000, '.')
 
 
 %% Stop H-MAN
-%instance.StopSystem()
+instance.CloseConnection()

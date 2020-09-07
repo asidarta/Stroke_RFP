@@ -1,9 +1,10 @@
+
 function textout = play_KR( myPath )
+
 % This function will randomly select one of the few possible options for
 % positive feedback, intermittent method 50% of the time. 
 % Here, KR = knowledge of results. The options are:
 %     1: "Good job",   2: "Well done",   3: "Excellent"    4-6: NONE
-
 
 
 [wav_coin, Fs] = audioread( strcat(myPath,'\Audio\coin2.mp3') );

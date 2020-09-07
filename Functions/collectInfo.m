@@ -1,11 +1,14 @@
+
 function [subjID, session, group, filename] = collectInfo( strName )
-% This function collects info of the trial such as subj ID, session #, 
-% and group. 
+
+% This function gets subject information from the user input, 
+% such as subj ID, session #, group, and filename. 
 
 if (isempty(strName))
     strName = 'result';
 end
 
+% Defined by user...
 subjID  = input('Enter subject ID (Sxx): ','s');
 group   = input('Enter group type (sham/exp): ','s');
 

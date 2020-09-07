@@ -1,3 +1,4 @@
+
 function null_force(inst)
 % This will remove all force settings to the robot. The input is the
 % robotic instance from the main code.

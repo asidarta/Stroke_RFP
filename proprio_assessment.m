@@ -5,41 +5,18 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-% Clear the workspace and the screen
-sca; 
-%clear; close all; 
-%clearvars;
+clc;
+clear; close all; 
 
+%% First, establish connection with H-MAN!
+% Obtain the instance handler, stiffness, and damping parameters.
+[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
-%% (0) Obtain the filename for the current trial
+% (0) Produce filename for the current trial based on user-defined information
 %[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
 
 
-
-%% Robot-related parameters -----------------------------------------------
-% Load the H-MAN DLL files
-my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\.dll files\';
-Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
-Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
-
-% Connect H-MAN to the workstation
-fprintf("Preparing connection to H-man................\n");
-%instance = ConnectHman();
-NLog.Common.InternalLogger.Info('Connection with H-MAN established');
-
-% Robot stiffness and viscuous field!
-kxx = num2str(3500); 
-kyy = num2str(3500);
-kxy = num2str(0); 
-kyx = num2str(0);
-bxx = num2str(0);  
-byy = num2str(0);
-
-% H-MAN 'Assistive' mode if subject is too weak..
-k_asst = num2str(3000); 
-
-
-% Trial-related parameters -----------------------------------------------
+%% Trial-related parameters -----------------------------------------------
 Ntrial = 100;
 toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!
 eachTrial = Shuffle(toshuffle);
@@ -47,7 +24,9 @@ myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 
 trialData = double.empty();
 toSave = double.empty();
-lastXpos = instance.current_x; lastYpos = instance.current_y;
+lastXpos = instance.hman_data.location_X; 
+lastYpos = instance.hman_data.location_Y;
+k_asst = 200;   % max Stiffness value (N/m) for assistive mode
 
 % Create a flag to denote which stages of the movement it is:
 %        5: robot moves to a target (reference traj)
@@ -55,6 +34,14 @@ lastXpos = instance.current_x; lastYpos = instance.current_y;
 %        1: subject moves actively to the target
 %        3: robot moves back to origin
 trialFlag = 1;
+
+% Sample frequency, timing parameters ------------------------------------
+sample_freq = 200;
+move_duration = 3;
+t = 0: 1/sample_freq : move_duration;
+curTrial = 1; 
+timerFlag = true;
+delay_at_target = 1.0;  % Hold at target position (sec)
 
 
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
@@ -74,7 +61,7 @@ ax_width = outerpos(3) - ti(1)/2 - ti(3)/2;
 ax_height = outerpos(4) - ti(2)/2 - ti(4)/2;
 ax.Position = [left bottom ax_width ax_height];
 
-% Create circular target traces
+% Create circular target traces. Here, I define four target locations for reaching.
 c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
 targetDist = 0.15;
 plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
@@ -95,7 +82,8 @@ set(gca,'XTick',[],'YTick',[]);             % remove X/Y ticks
 set(gca,'XTickLabel',[],'YTickLabel',[]);   % remove X/Y tick labels
 daspect([1 1 1])                            % maintaining aspect ratio
 
-% Let's compute the centre of the TARGET locations (convert to mm unit)
+% Let's compute the centre of the TARGET locations (convert to mm unit).
+% Here, I define four visual target locations for reaching.
 targetCtr = [[ targetDist*cosd(30);
                targetDist*cosd(60);
                targetDist*cosd(120);
@@ -104,16 +92,8 @@ targetCtr = [[ targetDist*cosd(30);
                targetDist*sind(60);
                targetDist*sind(120);
                targetDist*sind(150)] * 1000] ;
-ang = [30,60,  120,150];  % Angle (degree) w.r.t positive X-axis.
+ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
-           
-% Sample frequency, timing parameters ------------------------------------
-sample_freq = 200;
-move_duration = 1.2;
-t = 0: 1/sample_freq : move_duration;
-curTrial = 1; 
-timerFlag = true;
-delay_at_target = 1.0;  % Hold at target position (sec)
 
 
 
@@ -129,8 +109,8 @@ while (curTrial <= Ntrial) && (~KbCheck)
     null_force(instance);
 
     % (2) Set target position and other parameters
-    start_X = 0; %instance.current_x*1000;  % Unit: mm -> m
-    start_Y = 0; %instance.current_y*1000;  % Unit: mm -> m
+    start_X = 0; %instance.hman_data.location_X*1000;  % Unit: mm -> m
+    start_Y = 0; %instance.hman_data.location_Y*1000;  % Unit: mm -> m
     end_X   = targetCtr(m,1);  % Unit: mm -> m
     end_Y   = targetCtr(m,2);  % Unit: mm -> m
 
@@ -145,11 +125,11 @@ while (curTrial <= Ntrial) && (~KbCheck)
     for j = 1:length(out)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
-        pause(1/sample_freq);
+        %pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... %round(end_X), round(end_Y), ...
-                           double(instance.current_x),  double(instance.current_y), ...
-                           double(instance.velocity_x), double(instance.velocity_y), ...
-                           double(instance.fb_emergency) ];
+                           double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
+                           double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
+                           double(instance.hman_data.state) ];
         if (KbCheck)
             break; % Shall bail out if we press any key!
         end
@@ -175,11 +155,11 @@ while (curTrial <= Ntrial) && (~KbCheck)
     for j = 1:length(out2)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
-        pause(1/sample_freq);
+        %pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... %round(end_X), round(end_Y), ...
-                           double(instance.current_x),  double(instance.current_y), ...
-                           double(instance.velocity_x), double(instance.velocity_y), ...
-                           double(instance.fb_emergency)];
+                           double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
+                           double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
+                           double(instance.hman_data.state)];
         if (KbCheck)
             break; % Shall bail out if we press any key!
         end
@@ -198,7 +178,7 @@ while (curTrial <= Ntrial) && (~KbCheck)
     % (8) Play BEEP tone and disply MOVE cue...
     %pause_me(1);  
     goCue = plot_image(10, 0, 0.1, 20);
-    play_tone(1250, 0.2);
+    %play_tone(1250, 0.2);
     pause_me(delay_at_target);
     pause_me(delay_at_target);  
     
@@ -210,30 +190,30 @@ while (curTrial <= Ntrial) && (~KbCheck)
     fprintf('   2. Now joint position matching\n');
     j = 1;
     null_force(instance);
-    incrStiff = 40;     % stiffness ramping counter  (????????)
+    incrStiff = 0;      % stiffness ramping counter  (????????)
     t_active = tic;     % timer for active reaching
     delete(goCue);      % remove go visual cue
     
     while (~KbCheck)
-        %plot(instance.current_x, instance.current_y, 'r.');
+        %plot(instance.location_X, instance.location_Y, 'r.');
         pause_me(1/sample_freq);
 
         % Computing speed (Robot velocity readout is not good!)
-        speedX = (instance.current_x - lastXpos);   
-        speedY = (instance.current_y - lastYpos);
+        speedX = (instance.hman_data.location_X - lastXpos);   
+        speedY = (instance.hman_data.location_Y - lastYpos);
         speed  = 1000* sqrt(speedX^2 + speedY^2);  % unit in mm/sec.
         
         % Compute the distance between the CURSOR and the START centre
-        dist2Start = sqrt(instance.current_x^2 + instance.current_y^2);
+        dist2Start = sqrt(instance.hman_data.location_X^2 + instance.hman_data.location_Y^2);
 
         % Compute the distance between the CURSOR and the TARGET centre
-        dist2Target = sqrt((instance.current_x-end_X/1000)^2 + ...
-                           (instance.current_y-end_Y/1000)^2);
+        dist2Target = sqrt((instance.hman_data.location_X-end_X/1000)^2 + ...
+                           (instance.hman_data.location_Y-end_Y/1000)^2);
 
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ...
-                           double(instance.current_x),  double(instance.current_y), ...
-                           double(instance.velocity_x), double(instance.velocity_y), ...
-                           double(instance.fb_emergency)];
+                           double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
+                           double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
+                           double(instance.hman_data.state)];
         %a = [a; speed];
         %figure(2); plot(a); ylim([0 2]); hold on;
 
@@ -244,13 +224,12 @@ while (curTrial <= Ntrial) && (~KbCheck)
                 if (~incrStiff)
                 	fprintf("   3a. Assistive mode is ON\n");
                 end
-                if (incrStiff > str2double(k_asst))  % Assistive mode
-                    incrStiff = str2double(k_asst);
+                if (incrStiff > k_asst)  % Assistive mode
+                    incrStiff = k_asst;
                 end                                    
-                instance.SetTarget( num2str(end_X),num2str(end_Y),...
-                                    num2str(incrStiff/2),num2str(incrStiff),...
-                                    '0','0','10','10','0','0','1','0' );     
-                incrStiff = incrStiff + 10;
+                instance.SetTarget( num2str(end_X),num2str(end_Y),num2str(incrStiff/2), ...
+                                    num2str(incrStiff),'0','0','10','10','0','0','1','0' );     
+                incrStiff = incrStiff + 5;
             end
         % If far enough, it means subjects are capable of still moving.
         % Check if they have stopped moving
@@ -270,8 +249,8 @@ while (curTrial <= Ntrial) && (~KbCheck)
             end
         end
               
-        lastXpos = instance.current_x;
-        lastYpos = instance.current_y;
+        lastXpos = instance.hman_data.location_X;
+        lastYpos = instance.hman_data.location_Y;
         j=j+1; % loop counter
         
     end
@@ -291,7 +270,7 @@ while (curTrial <= Ntrial) && (~KbCheck)
     fprintf('   6. Handle moves back to the origin\n');
 
     % Minimum jerk haptic targets to zero (START) position
-    out4 = min_jerk([instance.current_x*1000 instance.current_y*1000 0], ... 
+    out4 = min_jerk([instance.hman_data.location_X*1000 instance.hman_data.location_Y*1000 0], ... 
                     [start_X start_Y 0], t);
     % Convert position into string for robot command
     Xpos = num2str(out4(:,1)); Ypos = num2str(out4(:,2));
@@ -300,11 +279,11 @@ while (curTrial <= Ntrial) && (~KbCheck)
     for j = 1:length(out4)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
-        pause(1/sample_freq);
+        %pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ...
-                           double(instance.current_x),  double(instance.current_y), ...
-                           double(instance.velocity_x), double(instance.velocity_y), ...
-                           double(instance.fb_emergency)];
+                           double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
+                           double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
+                           double(instance.hman_data.state)];
         if (KbCheck)
             break; % Shall bail out if we press any key!
         end
@@ -334,14 +313,14 @@ while (curTrial <= Ntrial) && (~KbCheck)
 end
 
 %% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\',myresultfile), toSave);
+%dlmwrite(strcat(myPath, 'Trial Data\',myresultfile), toSave);
         % Recording important kinematic data for each trial
         %    col-1 : Trial number
         %    col-2 : Stage of movement
         %    col-3,4 : Target position, angle (m)
         %    col-5,6 : handle X,Y position
         %    col-7,8 : handle X,Y velocity
-        %    col-9  : Emergency button status
+        %    col-9  : Emergency button state
 
 
 
@@ -349,8 +328,12 @@ dlmwrite(strcat(myPath, 'Trial Data\',myresultfile), toSave);
 null_force(instance); 
 close all;
 
-% DISCONNECT H-MAN SYSTEM
-%instance.StopSystem()
+% Stop TCP connection 
+instance.CloseConnection();
+fprintf("\nClosing connection to H-man................\n");
 
-% Done.
-fprintf('\nTrials finished, bye!\n');
+
+%% Indicate code has ended by playing an audio message
+[mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
+sound(mywav, Fs);
+fprintf('\nProprioception Test finished, bye!\n');

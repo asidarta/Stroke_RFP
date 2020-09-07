@@ -1,4 +1,6 @@
+
 function pause_me(duration)
+% This is a pause function which can detect key-press to bail out
 
 %tic;
 elapsed  = 0;

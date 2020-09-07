@@ -1,5 +1,8 @@
 
-function myOutput = plot_Image(ind,xpos,ypos,imgSize)
+function myOutput = plot_Image(ind, xpos, ypos, imgSize)
+% Input  = image centre position (x,y), image size, and index.
+% Output = handler to the image 
+
 
 imgSize = imgSize/1000;     % adjusting the unit (mm -> metre)!
 
@@ -23,7 +26,7 @@ switch( ind )   % image index
     otherwise
 end
 
-% Load the image file first
+% Load the image file first......
 [img, map, alphachannel] = imread( strcat(myPath,myImage) );
 %image(img, 'AlphaData', alphachannel);
 

@@ -1,13 +1,17 @@
 function output = moveTo(instance, xfinal, yfinal, move_duration)
 
 % Move the H-MAN handle from a start position to a final position. By default, 
-% the start position is the current position. Output is an position array.
+% this function reads current position as start position. Output is an position array.
 
     sample_freq = 500;
     t = 0: 1/sample_freq : move_duration;
 
-    start_X = instance.current_x*1000; % Unit: mm -> m
-    start_Y = instance.current_y*1000; % Unit: mm -> m
+    %start_X = instance.current_x*1000; % Unit: mm -> m
+    %start_Y = instance.current_y*1000; % Unit: mm -> m
+
+    % Revised to follow library V2.
+    start_X = instance.hman_data.location_X*1000; % Unit: mm -> m
+    start_Y = instance.hman_data.location_Y*1000; % Unit: mm -> m
 
     end_X   = xfinal * 1000; % Unit: mm -> m
     end_Y   = yfinal * 1000; % Unit: mm -> m

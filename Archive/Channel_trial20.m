@@ -29,9 +29,9 @@ null_force(instance);
 
 % Define channel parameters, if any: size in X-axis (mm), and angle (deg).
 % If the X pos (in mm unit) is fighting the channel, activate force!!!
-ch_size = 5;
-stiff   = [1000 0;0 1];   % N/m stiffness
-damp    = [50 0;0 1];     % N/m viscous field
+ch_size = 10;
+stiff   = [1000 0;0 1];  % N/m stiffness
+damp    = [0 0;0 0];     % N/m viscous field
 
 
 % Define channel angle w.r.t X-axis, in degrees.
@@ -50,26 +50,32 @@ while (1)
     % Read instantaneous position (in metre)
     posX = instance.current_x;
     posY = instance.current_y;
-    %fprintf('%f, %f, %f\n', instance.torque_R,instance.torque_L,instance.force_tot);
+    fprintf('Total force = %f\n',instance.force_tot);
     pause(1/fSample); 
 
     % Compute rotation matrix w.r.t X-axis....
     posRot = rot_matY * [posX; posY];
   
-    if ( abs(posRot(1)) > ch_size/1000 )  % note unit change!
-        %figure(1); plot(posRot(1), posRot(2), 'r.', 'MarkerSize', 20);
-        plot(posX, posY, 'r.', 'MarkerSize', 20);
+    if ( abs(posRot(1)) > ch_size/1000 && posRot(2) <= 0.06 ) % note unit of position change!
+        myColour = 'r.';
         instance.SetTarget( num2str(sign(posRot(1))*ch_size), ...
                             num2str(posRot(2)), ...
                             num2str(k_matY(1,1)), num2str(k_matY(2,2)), ...
                             num2str(-k_matY(1,2)), num2str(-k_matY(2,1)), ...
                             num2str(b_matY(1,1)), num2str(b_matY(2,2)), ...
                             num2str(-b_matY(1,2)), num2str(-b_matY(2,1)),'1','0' );                     
+    elseif ( posRot(2) > 0.06 )
+        myColour = 'r.';
+        instance.SetTarget( num2str(posX*1000), num2str(posY*1000), ...
+                            '500','500','10','10', ...
+                            '0','0','0','0','1','0' );   
     else
-        %figure(1); plot(posRot(1), posRot(2), 'g.', 'MarkerSize', 20);
-        plot(posX, posY, 'g.', 'MarkerSize', 20);
-        instance.SetTarget( '0','0','0','0','0','0','0','0','0','0','1','0' ); 
+        myColour = 'g.'; % Good zone!!
+        instance.SetTarget( '0','0','0','0','0','0','0','0','0','0','1','0' );
     end
+    
+    % Plot the data with certain color!
+    plot(posX, posY, myColour, 'MarkerSize', 20);
     
     % Detect key press then bail out
     isKeyPressed = ~isempty(get(hfig1,'CurrentCharacter'));

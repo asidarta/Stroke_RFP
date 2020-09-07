@@ -11,7 +11,7 @@ sca;
 %clear; close all; 
 %clearvars;
 
-%% (0) Obtain the filename for the current trial
+%% (0) Produce filename for the current trial based on user-defined information
 %[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
 
 
@@ -254,8 +254,9 @@ end
 null_force(instance); 
 close all;
 
-% DISCONNECT H-MAN SYSTEM
-%instance.StopSystem()
+% Stop TCP connection 
+instance.CloseConnection();
+fprintf("\nClosing connection to H-man................\n");
 
 % Done.
 fprintf('\nTrials finished, bye!\n');

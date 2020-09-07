@@ -1,4 +1,6 @@
+
 function play_tone(freq, duration)
+
 % Generate a tone with a certain frequency and duration...
     amp = 10;     % amplitude
     fs  = 44100;  % sampling frequency
