@@ -1,15 +1,15 @@
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%------ Notice: Code for PASSIVE Motor Training Task with Reward  ---------
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%------ Note: Code for PASSIVE Motor Training Task with Reward  ---------
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Note: Good for subjects with FMA score < 40 (Chris said).
 
 % Clear the workspace and the screen
 sca; 
-%clear; close all; 
-%clearvars;
+clear; close all; 
+clearvars;
 
 %% (0) Produce filename for the current trial based on user-defined information
 %[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
@@ -17,15 +17,8 @@ sca;
 
 
 %% Robot-related parameters -----------------------------------------------
-% Load the H-MAN DLL files
-my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\.dll files\';
-Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
-Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
-
-% Connect H-MAN to the workstation
-fprintf("Preparing connection to H-man................\n");
-%instance = ConnectHman();
-NLog.Common.InternalLogger.Info('Connection with H-MAN established');
+% Obtain the instance handler, stiffness, and damping parameters.
+[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % Robot stiffness and viscuous field!
 kxx = num2str(3500); 
@@ -51,6 +44,14 @@ trialData = double.empty();
 toSave = double.empty();
 lastXpos = instance.current_x; lastYpos = instance.current_y;
 
+% Sample frequency, timing parameters
+sample_freq = 200;  % IMPORTANT that the sample freq remains the same!!!
+move_duration = 2.0;
+t = 0: 1/sample_freq : move_duration;
+curTrial = 1; 
+timerFlag = true;
+delay_at_target = 1.0;  % Hold at target position (sec)
+
 % Create a flag to denote which stages of the movement it is:
 %        1: move to a target
 %        2: reached the target and stop
@@ -64,49 +65,17 @@ targetSize = 15;  %>>>>>>>>>>>>>>
 
 
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
-% Open an empty figure, remove the toolbar.
-SetMouse(10,10);  % Place away mouse cursor
-fig = figure(1);
-set(fig, 'Toolbar', 'none', 'Menubar', 'none');
-%child = fig.Children;
+% Open an empty figure, remove the toolbar
+SetMouse(10,10);  % Put away mouse cursor
+% Call the function to prepare game display! Display background too...
+fig = game_interface(1,1);
+instantCursor = plot(0,0,'k.');  
 
-% Creating a tight margin plot region!
-ax = gca;
-outerpos = ax.OuterPosition;
-ti = ax.TightInset; 
-left = outerpos(1) + ti(1)/2;
-bottom = outerpos(2) + ti(2)/2;
-ax_width = outerpos(3) - ti(1)/2 - ti(3)/2;
-ax_height = outerpos(4) - ti(2)/2 - ti(4)/2;
-ax.Position = [left bottom ax_width ax_height];
-
-% Load and place background image on the plot!
-bg = imread( strcat(myPath,'\Images\background.jpg') );
-image(bg,'XData',[-0.2 0.2],'YData',[-0.01 0.2]);
-set(gca,'visible','off')  % This removes the border
-hold on;
-
-% Create circular target traces
-c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
-targetDist = 0.15;
-%plot( %c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
-      %c(1,:)+targetDist*cosd(60), c(2,:)+targetDist*sind(60), ... 
-      %c(1,:)+targetDist*cosd(90), c(2,:)+targetDist*sind(90), ...
-      %c(1,:)+targetDist*cosd(120),c(2,:)+targetDist*sind(120), ...
-      %c(1,:)+targetDist*cosd(150),c(2,:)+targetDist*sind(150), ...
-plot(  c(1,:),c(2,:), 'LineWidth',5 ); 
-
-% Setting cosmetic/appearance of the plot
-axis([-0.2,0.2,-0.014,0.186]);              % axis limits, adjusted to LCD aspect ratio
-set(gcf,'Position', get(0, 'Screensize'));  % control figure size (full screen)
-set(gcf,'Color','k');                       % set figure background color black
-set(gca,'FontSize', 14);                    % control font in the figure
-set(gca,'XColor','k','YColor','k');         % set grid color to black
-set(gca,'Color','k');                       % set plot background color black
-set(gca,'XTick',[],'YTick',[]);             % remove X/Y ticks
-set(gca,'XTickLabel',[],'YTickLabel',[]);   % remove X/Y tick labels
-set(gca,'YDir','normal')                    % hack to flip plot elements after image!!
-daspect([1 1 1])                            % maintaining aspect ratio
+% Define keyboard press function associated with the window!
+set(fig,'WindowKeyPressFcn',@KeyPressFcn);
+% Define global variable as a flag to quit the main loop upon a keypress.
+global bailOut    
+bailOut = false;
 
 % Let's compute the centre of the TARGET positions (convert to mm unit)
 targetCtr = [[ targetDist*cosd(30);
@@ -121,17 +90,6 @@ targetCtr = [[ targetDist*cosd(30);
                targetDist*sind(150)] * 1000] ;
 ang = [30,60,90,120,150];  % Angle (degree) w.r.t positive X-axis.
 
-
-% Sample frequency, timing parameters
-sample_freq = 200;  % IMPORTANT that the sample freq remains the same!!!
-move_duration = 2.0;
-t = 0: 1/sample_freq : move_duration;
-curTrial = 1; 
-timerFlag = true;
-delay_at_target = 1.0;  % Hold at target position (sec)
-
-
-%% Audio and Visual FEEDBACK during training -------------------------------
 % Define the required audio file
 [wav1, Fs] = audioread( strcat(myPath,'\Audio\assess.mp3') );
 
@@ -146,7 +104,7 @@ txt4 = 'Wrong movement';
 
 %% Main loop: looping through ALL trials! ----------------------------------
 pause_me(2.0)
-while (~KbCheck && curTrial <= Ntrial)
+while (~bailOut && curTrial <= Ntrial)
     
     % (1) Ensure no force first    
     pause_me(1.0);
@@ -183,7 +141,7 @@ while (~KbCheck && curTrial <= Ntrial)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0');
         pause(out1(j,11));
-        if (KbCheck)
+        if (bailOut)
             break; % Shall bail out if we press any key!
         end
         delete(p1);
@@ -224,7 +182,7 @@ while (~KbCheck && curTrial <= Ntrial)
 %                           double(instance.velocity_x), double(instance.velocity_y), ...
 %                           double(instance.fb_emergency)];
 %        delete(p2);
-        if (KbCheck)
+        if (bailOut)
             break; % Shall bail out if we press any key!
         end
     end
@@ -258,5 +216,21 @@ close all;
 instance.CloseConnection();
 fprintf("\nClosing connection to H-man................\n");
 
-% Done.
-fprintf('\nTrials finished, bye!\n');
+
+%% Indicate code has ended by playing an audio message
+[mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
+sound(mywav, Fs);
+fprintf('\nProprioception Test finished, bye!!\n');
+pause(3.0)
+close all; clear; clc;  % Wait to return to MainMenu?
+fprintf("\nReturning to Main Menu selection.......\n");
+
+
+%% Function to detect ESC keyboard press, it returns the flag defined as global.
+function bailOut = KeyPressFcn(~,evnt)
+    global bailOut
+    %fprintf('key event is: %s\n',evnt.Key);
+    if(evnt.Key=="escape") 
+       bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
+    end
+end

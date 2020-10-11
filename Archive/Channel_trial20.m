@@ -35,7 +35,7 @@ damp    = [0 0;0 0];     % N/m viscous field
 
 
 % Define channel angle w.r.t X-axis, in degrees.
-theta = 0;
+theta = 90;
 % Define rotation matrix w.r.t X-axis
 %rot_matX = [ cosd(theta) -sind(theta); sind(theta) cosd(theta) ];
 % Define rotation matrix w.r.t Y-axis >>>
@@ -56,22 +56,30 @@ while (1)
     % Compute rotation matrix w.r.t X-axis....
     posRot = rot_matY * [posX; posY];
   
-    if ( abs(posRot(1)) > ch_size/1000 && posRot(2) <= 0.06 ) % note unit of position change!
+    % NOTE: unit of position changed!
+    if ( abs(posRot(1)) > ch_size/1000 && posRot(2) <= 0.06 )
         myColour = 'r.';
         instance.SetTarget( num2str(sign(posRot(1))*ch_size), ...
                             num2str(posRot(2)), ...
                             num2str(k_matY(1,1)), num2str(k_matY(2,2)), ...
                             num2str(-k_matY(1,2)), num2str(-k_matY(2,1)), ...
                             num2str(b_matY(1,1)), num2str(b_matY(2,2)), ...
-                            num2str(-b_matY(1,2)), num2str(-b_matY(2,1)),'1','0' );                     
-    elseif ( posRot(2) > 0.06 )
-        myColour = 'r.';
-        instance.SetTarget( num2str(posX*1000), num2str(posY*1000), ...
-                            '500','500','10','10', ...
-                            '0','0','0','0','1','0' );   
-    else
+                            num2str(-b_matY(1,2)), num2str(-b_matY(2,1)),'1','0' );
+                        
+    elseif ( abs(posRot(1)) > ch_size/1000 && posRot(2) > 0.06 )
+        myColour = 'k.';
+        instance.SetTarget( num2str(posRot(1)*1000), '60', ...
+                            '0','1000','0','0','0','0','0','0','1','0' );   
+                        
+    elseif ( abs(posRot(1)) < ch_size/1000 && posRot(2) > 0.06 )
+        myColour = 'k.';
+        instance.SetTarget( num2str(posRot(1)*1000), '60', ...
+                            '500','500','0','0','0','0','0','0','1','0' );   
+    
+    elseif ( abs(posRot(1)) < ch_size/1000 && posRot(2) <= 0.06 )
         myColour = 'g.'; % Good zone!!
         instance.SetTarget( '0','0','0','0','0','0','0','0','0','0','1','0' );
+    
     end
     
     % Plot the data with certain color!

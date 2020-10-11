@@ -1,5 +1,7 @@
 
+
 function [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot()
+
    % This function will establish connection to the robot. At the same time,
    % it is the place to define robot instances, stiffness, and damping.
 
@@ -21,7 +23,7 @@ instance = ConnectHMan();
 % H-MAN will not produce any force to the handle and send response data, unless target 
 % parameters for all active targets have been set. We send a dummy setTarget.
 instance.StartExercise();
-instance.SetTarget('0','0','0','0','0','0','0','0','0','0','1','0')
+instance.SetTarget('0','0','0','0','0','0','0','0','0','0','1','0');
 
 
 %% Robot parameter setup: stiffness (N/m) and viscuous field (N.s/m)!

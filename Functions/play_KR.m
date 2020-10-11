@@ -7,6 +7,8 @@ function textout = play_KR( myPath )
 %     1: "Good job",   2: "Well done",   3: "Excellent"    4-6: NONE
 
 
+myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP';
+
 [wav_coin, Fs] = audioread( strcat(myPath,'\Audio\coin2.mp3') );
 sound(wav_coin, Fs)
 

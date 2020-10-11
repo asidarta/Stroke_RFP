@@ -1,13 +1,13 @@
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%---- Note: Code for Passive Assessment of Proprioception Type 1 (Joint Position Matching) ---
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%--- Note: Code for Passive Assessment of Proprioception Type 2 (H-MAN style) ----
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 clc;
 clear; close all; 
-fprintf("\n--------   Joint Position Matching   --------\n");
+fprintf("\n------ Passive Matching Task with Keypress -----\n");
 
 
 %% First, establish connection with H-MAN!
@@ -159,130 +159,95 @@ while (curTrial <= Ntrial) && (~bailOut)
         
     % (7) Hold the handle position at the START.
     hold_pos(instance);
-
-    % (8) Play BEEP tone and display MOVE cue for 1.5 sec...
-    %pause_me(1);  
-    goCue = plot_image(10, 0, 0.1, 20);
-    play_tone(1250, 0.2);
-    pause_me(delay_at_target);
     pause_me(delay_at_target);  
     
     
     % PART 2: Let the user moves the handle to a target position ----------------------
-    % (1) Preparation. Produce zero force.   
-    trialFlag = 1; 
-    %a = []; 
-    fprintf('   2. Now joint position matching\n');
-    j = 1;
+    % (1) Ensure robot produces no force
     null_force(instance);
-    incrStiff = 0;      % stiffness ramping counter
-    t_active = tic;     % timer for active reaching
-    delete(goCue);      % remove go visual cue
-    
-    while (~bailOut)
-        %plot(instance.location_X, instance.location_Y, 'r.');
-        pause_me(1/sample_freq);
 
-        % Computing speed (Robot velocity readout is not good!)
-        speedX = (instance.hman_data.location_X - lastXpos);   
-        speedY = (instance.hman_data.location_Y - lastYpos);
-        speed  = 1000* sqrt(speedX^2 + speedY^2);  % unit in mm/sec.
-        
-        % Compute the distance between the CURSOR and the START centre
-        dist2Start = sqrt(instance.hman_data.location_X^2 + instance.hman_data.location_Y^2);
+    % (2) Set target position and other parameters
+    start_X = 0;   start_Y = 0;
+    end_X   = targetCtr(m,1);  % Unit: mm -> m
+    end_Y   = targetCtr(m,2);  % Unit: mm -> m
 
-        % Compute the distance between the CURSOR and the TARGET centre
-        dist2Target = sqrt((instance.hman_data.location_X-end_X/1000)^2 + ...
-                           (instance.hman_data.location_Y-end_Y/1000)^2);
+    % (3) Creating minimum jerk trajectory to target position
+    out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t*2);
+    fprintf('   2. Passive matching trajectory.\n');
+    % Convert position into string for robot command
+    Xpos = num2str(out(:,1)); Ypos = num2str(out(:,2));
 
-        trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ...
+    % (4a) Move handle to target for matching task!
+    trialFlag = 1;
+    for j = 1:length(out)
+        xt = Xpos(j,:);  yt = Ypos(j,:);
+        instance.SetTarget(xt,yt,'200','200','0','0',bxx,byy,'0','0','1','0'); 
+        pause(1/sample_freq);
+        trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state)];
-        %a = [a; speed];
-        %figure(2); plot(a); ylim([0 2]); hold on;
-
-        % (2) If after 4 sec subjects cannot move well, and the distance from the start 
-        % is too short, it's likely the arm is too weak. Activate assistive mode!
-        if ( dist2Start <= 0.1 )
-            if ( toc(t_active) > 4 )
-                if (~incrStiff)
-                	fprintf("   3a. Assistive mode is ON\n");
-                end
-                if (incrStiff > k_asst)  % Assistive mode
-                    incrStiff = k_asst;
-                end                                    
-                instance.SetTarget( num2str(end_X),num2str(end_Y),num2str(incrStiff), ...
-                                    num2str(incrStiff),'0','0','10','10','0','0','1','0' );     
-                incrStiff = incrStiff + 5;
-            end
-        % (3) If far enough, it means subjects are capable of still moving.
-        % Check if they have stopped moving and held the hand stationary!
-        else
-            if( speed < 1 )
-                if (timerFlag)
-                    fprintf("   3. Good. Handle moves far enough...\n");
-                    tic;
-                    timerFlag = false;
-                end
-                % Once the hand is stationary for 2 second, then....
-                if (toc > 2)
-                    fprintf("   4. Hold position remains for 1 sec!\n");
-                    timerFlag = true;
-                    break
-                end
-            end
-        end
-              
-        lastXpos = instance.hman_data.location_X; lastYpos = instance.hman_data.location_Y;
-        j=j+1; % loop counter
-        
-    end
-    
-    if (~isempty(trialData))
-        % Plot this trajectory. Save trial data into a mega array;
-        h3 = plot(trialData(:,5), trialData(:,6), 'r.');
-        toSave = [toSave; trialData];
-        trialData = double.empty();
-    end
-   
-    % (4) Preparing to move back from the Target!
-    % Then hand position can move back to the center.
-    trialFlag = 3;
-    fprintf('   6. Handle moves back to the origin\n');
-
-    % Create minimum jerk trajectory back to START position
-    out4 = min_jerk([instance.hman_data.location_X*1000 instance.hman_data.location_Y*1000 0], ... 
-                    [start_X start_Y 0], t);
-    % Convert position into string for robot command
-    Xpos = num2str(out4(:,1)); Ypos = num2str(out4(:,2));
-    
-    % (5) Move handle back to ORIGIN, zero position 
-    for j = 1:length(out4)
-        xt = Xpos(j,:);  yt = Ypos(j,:);
-        instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
-        pause(1/sample_freq);
+                           double(instance.hman_data.state) ];
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
     end
+   
+    if (~isempty(trialData))
+        % Plot this trajectory. Save trial data into a mega array;    
+        h3 = plot(trialData(:,5), trialData(:,6), 'b.');
+        toSave = [toSave; trialData];
+        trialData = double.empty();
+    end
+    
+    % Pause for 2 seconds at the target location
+    pause_me(2*delay_at_target);   
 
-    % (6) Hold the handle position at the START, pause for 2 sec.
+    % (5) Capture the current handle position....
+    now_X = instance.hman_data.location_X*1000;  % Take note unit!
+    now_Y = instance.hman_data.location_Y*1000;
+
+    % (6) Create minimum jerk trajectory back to START position
+    out2 = min_jerk([now_X now_Y 0], [start_X start_Y 0], t);
+    % Convert position into string for robot command
+    Xpos = num2str(out2(:,1)); Ypos = num2str(out2(:,2));
+    
+    % (7) Move handle back to ORIGIN, zero position 
+    trialFlag = 3;
+    for j = 1:length(out2)
+        xt = Xpos(j,:);  yt = Ypos(j,:);
+        instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
+        pause(1/sample_freq);
+        trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
+                           double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
+                           double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
+                           double(instance.hman_data.state)];
+        if (bailOut)
+            break; % Shall bail out if we press any key!
+        end
+    end
+    
+    if (~isempty(trialData))
+        % Plot this trajectory. Save trial data into a mega array;    
+        h4 = plot(trialData(:,5), trialData(:,6), 'b.');
+        toSave = [toSave; trialData];
+        trialData = double.empty();
+    end
+        
+    % (8) Hold the handle position at the START.
     hold_pos(instance);
     pause_me(2);
-    fprintf('   7. Moving to NEXT TRIAL!\n');
+    fprintf('   4. Moving to NEXT TRIAL!\n');
     
-    % (7) Clear the figure from old position data. First, obtain the handler to the
+    % (9) Clear the figure from old position data. First, obtain the handler to the
     % children part of the figure, then delete the components!
     try    
-        delete([h1,h2,h3]);
+        delete([h1,h2,h3,h4]);
     catch
     end
-    % (8) Ready to continue to the next trial...
+    % (10) Ready to continue to the next trial...
     curTrial = curTrial + 1;
 
 end
-
 
 
 %% Saving trial data.........

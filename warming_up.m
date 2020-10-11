@@ -1,13 +1,13 @@
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%------   Note: Code for motor behavioural assessment with robot   --------
+%------  Notice: Code for motor behavioural assessment with robot  --------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 clc;
 clear; close all;
-fprintf("\n--------   Motor Assessment   --------\n");
+fprintf("\n--------  Warming up (Preparation)   --------\n");
 
 
 %% First, establish connection with H-MAN!
@@ -19,7 +19,7 @@ fprintf("\n--------   Motor Assessment   --------\n");
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 40;
+Ntrial = 20;
 hitScore  = 0;   % Add +10 for each success
 toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!!
 eachTrial = Shuffle(toshuffle);
@@ -46,11 +46,11 @@ delay_at_target = 1;  % Hold at target position (sec)
 trialFlag = 0;
 
 % Define the SIZE of the target!
-targetSize = 10;  %>>>>>>>>>>>>>>
+targetSize = 15;  %>>>>>>>>>>>>>>
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
-targetDist = 0.15;
+targetDist = 0.1;   % >>>>>>>> This is shorter than usual reaching distance!
 targetCtr = [[ targetDist*cosd(30);
                targetDist*cosd(60);
                targetDist*cosd(120);
@@ -68,14 +68,8 @@ SetMouse(10,10);  % Put away mouse cursor
 fig = game_interface(1,0);
 instantCursor = plot(0,0,'k.');
 
-% Define keyboard press function associated with the window!
-set(fig,'WindowKeyPressFcn',@KeyPressFcn);
-% Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut    
-bailOut = false;
-
 % Define the required audio file
-[wav1, Fs] = audioread( strcat(myPath,'\Audio\assess.mp3') );
+[monster, Fs] = audioread( strcat(myPath,'\Audio\monster.mp3') );
 
 % Text to be displayed as feedback
 txt1 = 'Next trial ~';
@@ -83,8 +77,52 @@ txt4 = 'Try again...';
 
 
 
-%% Main loop: looping through ALL trials! ----------------------------------
-pause_me(2.0);
+%% PART 1 - Range of Motion Exercise inside the workspace -----------------
+% Basically subjecs free to make movement with the handle inside the
+% workspace, under no-force whatsoever. Do this exercise for max 5 minutes.
+pause(1.0);
+fprintf('\nPART 1: Press ANY key to proceed to next stage........\n');
+
+while (1)
+    % Obtain H-MAN handle position in real-time and plot it. Convert to mm unit!
+    myXpos = instance.hman_data.location_X; 
+    myYpos = instance.hman_data.location_Y;
+    % This controls how the CURSOR is displayed on the screen.
+    delete(instantCursor);   % remove from the plot first, then redraw the cursor
+    instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);   
+    pause(0.03);  % give small delay!
+    if (KbCheck)
+        break; % Shall bail out if we press any key!
+    end
+end
+
+% Define the required audio file: Ask subjects to stay relaxed!
+relax = plot_image(11, 0, 0.1, 30);
+[relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax.mp3') );
+sound(relax_wav, Fs);
+pause(3);
+delete(relax);
+
+% Create minimum jerk trajectory back to START position
+movepos = moveTo(instance,0,0,0.6);
+Xpos = num2str(movepos(:,1));  Ypos = num2str(movepos(:,2));
+    
+% Move handle back to ORIGIN, zero position 
+for j = 1:length(Xpos)
+    xt = Xpos(j,:);  yt = Ypos(j,:);
+    instance.SetTarget(xt,yt,'3000','3000','0','0','0','0','0','0','1','0'); 
+    pause(1/sample_freq);
+    if (KbCheck)
+        break; % Shall bail out if we press any key!
+    end
+end
+
+
+
+
+%% Part 2 - Main loop: looping through ALL trials! ------------------------
+fprintf('\nPART 2: Starting the resistive reaching task........\n');
+pause(3.0)
 for curTrial = 1:Ntrial
 
     % Preparting current target position, then plot the target location.
@@ -99,11 +137,10 @@ for curTrial = 1:Ntrial
     counter   = 0;      % Will be used for displaying cursor purposes
     
     % Plot the TARGET POSITION so as to show the subjects
-    pause_me(1.5);
-    %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
-    plot_image( 12, targetCtr(m,1), targetCtr(m,2), targetSize );    
-    pause_me(1.5);
-
+    plot_image( 13, targetCtr(m,1), targetCtr(m,2), targetSize );    
+    sound(monster, Fs);
+    pause_me(3.0);
+    
     % Play BEEP tone and disply MOVE cue for 1.5 sec!!
     goCue = plot_image(10, 0, 0.1, 30);
     play_tone(1250, 0.18);
@@ -111,7 +148,7 @@ for curTrial = 1:Ntrial
     delete(goCue);  % delete from the plot after a sufficient time
     
     % While the handle is free and subject starts moving by himself...
-    while (~bailOut && ~nextTrial)
+    while (~KbCheck && ~nextTrial)
     
         % Data rate, pause in-between loop
         tstart = tic;   % this is to calculate elapsed time per loop
@@ -120,7 +157,7 @@ for curTrial = 1:Ntrial
         % Obtain H-MAN handle position in real-time and plot it. Convert to mm unit!
         myXpos = instance.hman_data.location_X; 
         myYpos = instance.hman_data.location_Y;
-        
+
         % Estimate the cursor speed (in mm, and use sample rate).........
         speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) *1000*sample_freq;
         % Compute distance between handle-Start in real world coordinate
@@ -129,7 +166,7 @@ for curTrial = 1:Ntrial
         dist2Target = sqrt((myXpos-targetCtr(m,1))^2 + (myYpos-targetCtr(m,2))^2);
         
         % This controls how the CURSOR is displayed on the screen.
-        if(counter == 8)% && trialFlag == 1)
+        if(counter == 8)
             delete(instantCursor);   % remove from the plot first, then redraw the cursor
             instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);   
             counter = 0;
@@ -139,14 +176,16 @@ for curTrial = 1:Ntrial
         
         switch( trialFlag )
         % STAGE-1 : Moving towards the target (press any key to exit)
-        case 1
+        case 1            
+            % Important! Now set resistive force, preventing it from leaving the START  >>>>>>>>>>
+            instance.SetTarget('0','0','200','200','0','0','0','0','0','0','1','0');
             if (aimless_)
                 aimless_ = false;
                 tic;   % Start timer!
             end       
             % Subject cannot be aimlessly reaching forever
             if (dist2Start < 0.10) 
-                if (toc > 5.0)   % this is 5-sec timeout!!!
+                if (toc > 25.0)   % this is 5-sec timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
                     text(-0.03,0.16,txt4,'FontSize',50,'Color','r','FontWeight','bold');
@@ -159,14 +198,14 @@ for curTrial = 1:Ntrial
                     tic;     % Start timer
                 end
                 % If the cursor is close enough to the TARGET, check if the movement 
-                % is SLOW enough, almost stopping. Then prepare to STOP for 2 seconds.
+                % is SLOW enough, almost stopping. Then prepare to HOLD for 2 seconds.
                 if (speed < 10)
                     timerFlag = false;   % Update flag to allow tic again
                 else
                     timerFlag = true;   % Update flag to allow tic again
                 end
                 if (toc > delay_at_target)
-                    % After 2 seconds stop, ready to move to the next stage 
+                    % Ready to move to the next stage 
                     trialFlag = 2;
                     % Update flag to allow new 'tic'
                     timerFlag = true;   
@@ -180,8 +219,16 @@ for curTrial = 1:Ntrial
             if (timerFlag)
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
+                
+                % Updated: compute trial-related KINEMATIC performance measures
+                [ t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,t_pd200_target,...
+                        stpx, stpy, PeakVel ] =  get_Kinematic( trialData, targetCtr(m,:), sample_freq );
+                % Then save the performance data and reward status
+                toSave2 = [toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,...
+                         t_pdmaxv_target,t_pd200_target,stpx, stpy, PeakVel] ];
+
             end
-            if (toc > 0.3)  % just a short delay here
+            if (toc > 0.3)  % Wait for a while...
                 trialFlag = 3;
                 timerFlag = true;    % Update flag to allow new 'tic'   
                 fprintf('   Now moving back to START position.\n');
@@ -192,19 +239,18 @@ for curTrial = 1:Ntrial
                 delete(relax);                    
             end
                 
-        % STAGE-3 : Moving BACK to the Start position. Remain relax!
+        % STAGE-3 : Moving BACK to the Start position (press any key to exit)
         case 3       
             if(timerFlag)
                 % This is for generation of minimum jerk trajectory!
                 movepos = moveTo(instance,0,0,0.5);
-                xt = num2str(movepos(:,1));
-                yt = num2str(movepos(:,2));
+                xt = num2str(movepos(:,1));   yt = num2str(movepos(:,2));
                 timerFlag = false;
             end           
             % Move the handle back to start using minimum jerk trajectory >>>>>>>>
             if (pos_index < length(movepos))
                 pos_index = pos_index + 1;
-                instance.SetTarget( xt(pos_index,:),yt(pos_index,:),kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0' ); 
+                instance.SetTarget( xt(pos_index,:),yt(pos_index,:),kxx,kyy,kxy,kyx,'0','0','0','0','1','0' ); 
             else
                 hold_pos(instance);
                 % Go to the LAST stage
@@ -262,15 +308,8 @@ for curTrial = 1:Ntrial
                        hitFlag, hitScore, elapsed, double(instance.hman_data.state), ...
                        double(instance.hman_data.force) ];
     end
-    
-    % Updated: This is to compute KINEMATIC measures ----------------------
-    [ t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,t_pd200_target,...
-        stpx, stpy, PeakVel ] =  get_Kinematic( trialData, targetCtr(m,:), sample_freq );
-   
-    toSave2 = [toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,...
-                         t_pdmaxv_target,t_pd200_target,stpx, stpy, PeakVel] ];
-    
-    % We also appendd trajectory data to the Mega Array to be saved!
+        
+    % We also append trajectory data to the Mega Array to be saved!
     toSave = [toSave; trialData]; 
     trialData = double.empty();  
     
@@ -285,8 +324,8 @@ for curTrial = 1:Ntrial
     curTrial = curTrial + 1; 
     pause_me(delay_at_target);     % Let's pause for a while...
     delete(t1);                    % then remove the text from the screen
-
-    if (bailOut)
+    
+    if (KbCheck)
         break; % Shall bail out if we press any key!
     end
    
@@ -302,24 +341,10 @@ null_force(instance);
 close all;
 
 % Stop TCP connection 
-instance.CloseConnection();
-fprintf("\nClosing connection to H-man................\n");
-
-
-%% Indicate code has ended by playing an audio message
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
-fprintf('\nMotor assessment has finished, bye!!\n');
-pause(4.0)
+fprintf('\nWarming up finished, bye!!\n');
+pause(3.0)
 close all; clear; clc;  % Wait to return to MainMenu?
-fprintf("\nReturning to Main Menu selection..........\n");
+fprintf("\nReturning to Main Menu selection........\n");
 
-
-%% Function to detect ESC keyboard press, it returns the flag defined as global.
-function bailOut = KeyPressFcn(~,evnt)
-    global bailOut
-    %fprintf('key event is: %s\n',evnt.Key);
-    if(evnt.Key=="escape")
-       bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
-    end
-end

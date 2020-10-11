@@ -23,6 +23,10 @@ switch( ind )   % image index
         myImage = 'move.png';
     case 11
         myImage = 'relax.png';
+    case 12
+        myImage = 'emoji.png';
+    case 13 
+        myImage = 'monster12.png';
     otherwise
 end
 

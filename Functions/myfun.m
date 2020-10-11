@@ -1,5 +1,12 @@
-function b = myfun(src,event)
-    % Return the key on the keyboard
-    disp(event.Key);
-    b = event.Key;
-end
+%function myfun
+%      close all;
+%      h = figure;
+%      set(h,'WindowKeyPressFcn',@KeyPressFcn);
+%      function KeyPressFcn(~,evnt)
+%          fprintf('key event is: %s\n',evnt.Key);
+%          if(evnt.Key=="escape")
+%              fprintf('--> You have pressed wrongly, dear!\n');
+%          end
+%      end
+%end
+

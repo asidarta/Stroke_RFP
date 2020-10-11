@@ -10,7 +10,7 @@ end
 
 % Defined by user...
 subjID  = input('Enter subject ID (Sxx): ','s');
-group   = input('Enter group type (sham/exp): ','s');
+group   = input('Enter group type: ','s');
 
 % Let's use try..catch!
 try
