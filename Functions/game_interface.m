@@ -5,8 +5,9 @@ function fig = game_interface( xxx, flag )
 % mainly be black in color, maximize in size, and there will be a background image
 % if selected. Input xxx = figure number; flag = show zombie background
 
-
-fig = figure(xxx);  % Open an empty figure
+% Open an empty figure, hide the figure title. Should I make the window fullscreen?
+fig = figure('numbertitle', 'off');%, 'WindowState', 'fullscreen');
+% Hide the unnecessary toolbar
 set(fig, 'Toolbar', 'none', 'Menubar', 'none');
 
 % (1) Creating a tight margin plot region!

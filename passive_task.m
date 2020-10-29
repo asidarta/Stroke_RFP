@@ -12,7 +12,7 @@ clear; close all;
 clearvars;
 
 %% (0) Produce filename for the current trial based on user-defined information
-%[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
+%[subjID, ~, myresultfile] = collectInfo( "passive" );
 
 
 

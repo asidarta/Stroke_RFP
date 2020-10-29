@@ -15,7 +15,7 @@ fprintf("\n--------   Joint Position Matching   --------\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-%[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
+[subjID, ~, myresultfile] = collectInfo( "somato_jpm" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -39,7 +39,7 @@ trialFlag = 1;
 
 % Sample frequency, timing parameters ------------------------------------
 sample_freq = 200;
-move_duration = 1.0;
+move_duration = 1.0;    % estimated to be 2 sec movement!
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1; 
 timerFlag = true;
@@ -249,7 +249,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     % (4) Preparing to move back from the Target!
     % Then hand position can move back to the center.
     trialFlag = 3;
-    fprintf('   6. Handle moves back to the origin\n');
+    fprintf('   5. Handle moves back to the origin\n');
 
     % Create minimum jerk trajectory back to START position
     out4 = min_jerk([instance.hman_data.location_X*1000 instance.hman_data.location_Y*1000 0], ... 
@@ -270,7 +270,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     % (6) Hold the handle position at the START, pause for 2 sec.
     hold_pos(instance);
     pause_me(2);
-    fprintf('   7. Moving to NEXT TRIAL!\n');
+    fprintf('   6. Moving to NEXT TRIAL!\n');
     
     % (7) Clear the figure from old position data. First, obtain the handler to the
     % children part of the figure, then delete the components!
@@ -286,7 +286,7 @@ end
 
 
 %% Saving trial data.........
-%dlmwrite(strcat(myPath, 'Trial Data\',myresultfile), toSave);
+dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
         % Recording important kinematic data for each trial
         %    col-1 : Trial number
         %    col-2 : Stage of movement

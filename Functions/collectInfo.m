@@ -1,5 +1,5 @@
 
-function [subjID, session, group, filename] = collectInfo( strName )
+function [subjID, session, filename] = collectInfo( strName )
 
 % This function gets subject information from the user input, 
 % such as subj ID, session #, group, and filename. 
@@ -9,14 +9,18 @@ if (isempty(strName))
 end
 
 % Defined by user...
-subjID  = input('Enter subject ID (Sxx): ','s');
-group   = input('Enter group type: ','s');
+subjID  = input('\nEnter subject ID (Sxx): ','s');
+%group   = input('Enter group type: ','s');
 
+if (strName == "train")
 % Let's use try..catch!
-try
-    session = input('Enter session number: ');
-catch
-    warning('Please give a number only!');
+    try
+        session = input('Enter session number: ');
+    catch
+        warning('Please give a number only!');
+    end
+else
+    session = input('Enter session name: ','s');
 end
 
 if (isempty(session))
@@ -28,9 +32,10 @@ end
 formatOut = 'HHMM'; 
 
 % Produce filename directly here.........
-filename = strcat('subjID','_',group,'_',num2str(session),'_',...
-                  strName,'_',datestr(now,formatOut));
+filename = strcat(subjID,'_',strName,'_',num2str(session),'_',...
+                  datestr(now,formatOut));
               
 KbCheck;
+filename
 
 

@@ -7,6 +7,9 @@
 
 clear; clc; close all;
 
+s = settings;
+s.matlab.fonts.codefont.Size.TemporaryValue = 15; % points, make Matlab display font bigger!
+
 [mywav, Fs] = audioread('C:\Users\rris\Documents\MATLAB\Stroke_RFP\Audio\Opening.mp3');
 sound(mywav, Fs);
 
@@ -46,6 +49,8 @@ while (1)
             quit
     end
 end
+
+clearTemporaryValue(s.matlab.fonts.codefont.Size);
 
 % Note: This Main Menu script doesn't contain robot communication. For that,
 % refer to the "prep_robot.m" inside the individual task script.

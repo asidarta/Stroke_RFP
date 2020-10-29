@@ -15,7 +15,7 @@ fprintf("\n------ Passive Matching Task with Keypress -----\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-%[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
+%[subjID, ~, myresultfile] = collectInfo( "somato2" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -39,7 +39,7 @@ trialFlag = 1;
 
 % Sample frequency, timing parameters ------------------------------------
 sample_freq = 200;
-move_duration = 1.0;
+move_duration = 1.0;   % estimated to be 2 sec movement!
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1; 
 timerFlag = true;
@@ -54,8 +54,8 @@ fig = game_interface(1,0);
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
 % Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut    
-bailOut = false;
+global bailOut;  global replayOut;  
+bailOut = false; replayOut = false;
 
 % Create circular target traces. Here, I define four target locations for reaching.
 targetDist = 0.15;
@@ -172,7 +172,9 @@ while (curTrial <= Ntrial) && (~bailOut)
     end_Y   = targetCtr(m,2);  % Unit: mm -> m
 
     % (3) Creating minimum jerk trajectory to target position
-    out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t*2);
+    % NOTE: Now the replay speed should be slower....
+    t_replay = 0: 1/sample_freq : move_duration*10;
+    out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t_replay);
     fprintf('   2. Passive matching trajectory.\n');
     % Convert position into string for robot command
     Xpos = num2str(out(:,1)); Ypos = num2str(out(:,2));
@@ -181,12 +183,16 @@ while (curTrial <= Ntrial) && (~bailOut)
     trialFlag = 1;
     for j = 1:length(out)
         xt = Xpos(j,:);  yt = Ypos(j,:);
-        instance.SetTarget(xt,yt,'200','200','0','0',bxx,byy,'0','0','1','0'); 
+        instance.SetTarget(xt,yt,'1600','1600','0','0','10','10','0','0','1','0');  %%%%%%%%%%%%
         pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
                            double(instance.hman_data.state) ];
+        if (replayOut)
+            fprintf('   3. Participant produced answer! Saving current position\n');
+            break; % Shall bail out if we press any key!
+        end
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
@@ -251,7 +257,7 @@ end
 
 
 %% Saving trial data.........
-%dlmwrite(strcat(myPath, 'Trial Data\',myresultfile), toSave);
+dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
         % Recording important kinematic data for each trial
         %    col-1 : Trial number
         %    col-2 : Stage of movement
@@ -272,17 +278,23 @@ fprintf("\nClosing connection to H-man................\n");
 %% Indicate code has ended by playing an audio message
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
-fprintf('\nProprioception Test finished, bye!!\n');
+fprintf('\nProprioception Test-2 finished, bye!!\n');
 pause(4.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection..........\n");
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
-function bailOut = KeyPressFcn(~,evnt)
-    global bailOut
+function [bailOut, replayOut] = KeyPressFcn(~,evnt)
+    global bailOut;  global replayOut
     %fprintf('key event is: %s\n',evnt.Key);
     if(evnt.Key=="escape")
        bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
+       replayOut = false;
+    end
+    %fprintf('key event is: %s\n',evnt.Key);
+    if(evnt.Key=="return")
+       bailOut = false;
+       replayOut = true;
     end
 end

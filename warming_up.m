@@ -1,8 +1,8 @@
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%------  Notice: Code for motor behavioural assessment with robot  --------
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%------  Notice: Code for warming up with the robot  --------
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%&%%%%%%%%%
 
 
 clc;
@@ -15,7 +15,7 @@ fprintf("\n--------  Warming up (Preparation)   --------\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-%[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
+%[subjID, ~, myresultfile] = collectInfo( "warm" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -25,7 +25,8 @@ toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!!
 eachTrial = Shuffle(toshuffle);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 trialData = double.empty();
-toSave = double.empty();  toSave2 = double.empty();
+toSave   = double.empty();  
+toSave2  = double.empty();
 lastXpos = instance.hman_data.location_X; 
 lastYpos = instance.hman_data.location_Y;
 
@@ -46,7 +47,7 @@ delay_at_target = 1;  % Hold at target position (sec)
 trialFlag = 0;
 
 % Define the SIZE of the target!
-targetSize = 15;  %>>>>>>>>>>>>>>
+targetSize = 15;  % >>>>>>>>>>>>>>
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
@@ -62,47 +63,77 @@ targetCtr = [[ targetDist*cosd(30);
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 
+
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display!
 fig = game_interface(1,0);
 instantCursor = plot(0,0,'k.');
+% Load the photo map, let the subject explore the map.
+photo = imread( strcat(myPath,'\Images\mbs.png') );
+aaaa  = image(flipud(photo),'XData',[-0.14 0.14],'YData',[-0.016 0.167]);
+
+% Define keyboard press function associated with the window!
+set(fig,'WindowKeyPressFcn',@KeyPressFcn);
+% Define global variable as a flag to quit the main loop upon a keypress.
+global bailOut    
+bailOut = false;
 
 % Define the required audio file
-[monster, Fs] = audioread( strcat(myPath,'\Audio\monster.mp3') );
-
-% Text to be displayed as feedback
-txt1 = 'Next trial ~';
-txt4 = 'Try again...';
+[wind, Fs] = audioread( strcat(myPath,'\Audio\wind.mp3') );
 
 
 
 %% PART 1 - Range of Motion Exercise inside the workspace -----------------
 % Basically subjecs free to make movement with the handle inside the
 % workspace, under no-force whatsoever. Do this exercise for max 5 minutes.
+
 pause(1.0);
 fprintf('\nPART 1: Press ANY key to proceed to next stage........\n');
+message = 'Move around the Singapore map';
+mytext  = text(-0.1,0.184,message,'FontSize',47,'Color','g');
+
+% Play BEEP tone and disply MOVE cue for 1.5 sec!!
+goCue = plot_image(10, 0, 0.1, 40);
+play_tone(1250, 0.18);
+pause_me(1.25);
+delete(goCue);  % delete from the plot after a sufficient time
 
 while (1)
     % Obtain H-MAN handle position in real-time and plot it. Convert to mm unit!
     myXpos = instance.hman_data.location_X; 
     myYpos = instance.hman_data.location_Y;
+    
+    % Estimate the cursor speed (in mm, and use sample rate).........
+    speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) * sample_freq;
+    if (speed > 2) %&& (dist2Start > 0.07)
+        if (mod(count,9)==0)   % just to prevent playing sound each time
+            sound(wind, Fs);
+        end
+    end
+    pause(0.009);  % give small delay!
+
     % This controls how the CURSOR is displayed on the screen.
-    delete(instantCursor);   % remove from the plot first, then redraw the cursor
-    instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);   
-    pause(0.03);  % give small delay!
+    instantCursor = plot(myXpos,myYpos,'b.','MarkerSize', 35);   
+    lastXpos = myXpos; lastYpos = myYpos;
+    
     if (KbCheck)
         break; % Shall bail out if we press any key!
     end
 end
 
+% Done with exercise. Remove all previous images.
+mychild = fig.Children.Children;
+delete(mychild); pause(0.5);
+
 % Define the required audio file: Ask subjects to stay relaxed!
 relax = plot_image(11, 0, 0.1, 30);
-[relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax.mp3') );
-sound(relax_wav, Fs);
+%[relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax2.mp3') );
+%sound(relax_wav, Fs);
 pause(3);
 delete(relax);
-
+    
+    
 % Create minimum jerk trajectory back to START position
 movepos = moveTo(instance,0,0,0.6);
 Xpos = num2str(movepos(:,1));  Ypos = num2str(movepos(:,2));
@@ -112,7 +143,7 @@ for j = 1:length(Xpos)
     xt = Xpos(j,:);  yt = Ypos(j,:);
     instance.SetTarget(xt,yt,'3000','3000','0','0','0','0','0','0','1','0'); 
     pause(1/sample_freq);
-    if (KbCheck)
+    if (bailOut)
         break; % Shall bail out if we press any key!
     end
 end
@@ -138,11 +169,10 @@ for curTrial = 1:Ntrial
     
     % Plot the TARGET POSITION so as to show the subjects
     plot_image( 13, targetCtr(m,1), targetCtr(m,2), targetSize );    
-    sound(monster, Fs);
-    pause_me(3.0);
+    pause_me(2.0);
     
     % Play BEEP tone and disply MOVE cue for 1.5 sec!!
-    goCue = plot_image(10, 0, 0.1, 30);
+    goCue = plot_image(10, 0, 0.12, 25);
     play_tone(1250, 0.18);
     pause_me(1.25);
     delete(goCue);  % delete from the plot after a sufficient time
@@ -183,12 +213,12 @@ for curTrial = 1:Ntrial
                 aimless_ = false;
                 tic;   % Start timer!
             end       
-            % Subject cannot be aimlessly reaching forever
-            if (dist2Start < 0.10) 
-                if (toc > 25.0)   % this is 5-sec timeout!!!
+            % Subject cannot be aimlessly reaching forever. Put 7cm reaching distance as limit.
+            if (dist2Start < 0.07) 
+                if (toc > 6.0)   % this is 6-sec timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
-                    text(-0.03,0.16,txt4,'FontSize',50,'Color','r','FontWeight','bold');
+                    text(-0.03,0.16,'Try again...','FontSize',50,'Color','r','FontWeight','bold');
                     fprintf("   Timeout. Failed to reach to this direction!\n");
                 end
             % Note: ensure that subject is able to move beyond a distance > 0.10 m.
@@ -224,8 +254,8 @@ for curTrial = 1:Ntrial
                 [ t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,t_pd200_target,...
                         stpx, stpy, PeakVel ] =  get_Kinematic( trialData, targetCtr(m,:), sample_freq );
                 % Then save the performance data and reward status
-                toSave2 = [toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,...
-                         t_pdmaxv_target,t_pd200_target,stpx, stpy, PeakVel] ];
+                toSave2 = [ toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,...
+                            t_pdmaxv_target,t_pd200_target,stpx, stpy, PeakVel] ];
 
             end
             if (toc > 0.3)  % Wait for a while...
@@ -316,16 +346,16 @@ for curTrial = 1:Ntrial
     % Clear the figure from old position data. First, obtain the handler to the
     % children part of the figure, then delete the components!
     mychild  = fig.Children.Children;
-    delete(mychild(1:length(mychild)-1));
+    delete(mychild);
 
     % CONTINUE TO THE NEXT TRIAL.....
-    t1 = text(-0.04,0.16,txt1,'FontSize',55,'FontWeight','bold','Color','w');
+    t1 = text(-0.04,0.16,'Next trial~','FontSize',55,'FontWeight','bold','Color','w');
     pause(0.01); 
     curTrial = curTrial + 1; 
     pause_me(delay_at_target);     % Let's pause for a while...
     delete(t1);                    % then remove the text from the screen
     
-    if (KbCheck)
+    if (bailOut)
         break; % Shall bail out if we press any key!
     end
    
@@ -333,18 +363,30 @@ end
 
 
 %% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\','traj.csv'), toSave);
-dlmwrite(strcat(myPath, 'Trial Data\','trial.csv'), toSave2);
+dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
+dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
 close all;
 
 % Stop TCP connection 
+instance.CloseConnection();
+
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
 fprintf('\nWarming up finished, bye!!\n');
 pause(3.0)
+
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection........\n");
 
+
+%% Function to detect ESC keyboard press, it returns the flag defined as global.
+function bailOut = KeyPressFcn(~,evnt)
+    global bailOut
+    %fprintf('key event is: %s\n',evnt.Key);
+    if(evnt.Key=="escape") 
+       bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
+    end
+end

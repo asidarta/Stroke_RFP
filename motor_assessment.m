@@ -15,7 +15,7 @@ fprintf("\n--------   Motor Assessment   --------\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-%[subjID, ~, ~, myresultfile] = collectInfo( mfilename );
+[subjID, ~, myresultfile] = collectInfo( "motor" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -294,8 +294,8 @@ end
 
 
 %% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\','traj.csv'), toSave);
-dlmwrite(strcat(myPath, 'Trial Data\','trial.csv'), toSave2);
+dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
+dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
