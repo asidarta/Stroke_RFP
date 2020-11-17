@@ -15,11 +15,11 @@ fprintf("Take note whether this client is a control group.... \n\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-[subjID, ~, myresultfile] = collectInfo( "train" );
+[subjID, session, myresultfile] = collectInfo( "train" );   %targetSize = input('\nEnter target size: ');
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 16;
+Ntrial = 60;
 hitScore  = 0;   % Add +10 for each success
 toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!!
 eachTrial = Shuffle(toshuffle);
@@ -58,20 +58,17 @@ delay_at_target = 2;  % Hold at target position (in second)
 %        4: stay and ready for next trial
 trialFlag = 0;
 
-% Define the SIZE of the target!
-targetSize = 15;            %>>>>>>>>>>>>>>
+% Define the SIZE of the target. If empty, use Default = 20.
+%if (isempty(targetSize))
+    % >>> target size will be smaller for subsequent session!
+    targetSize = 20 - floor((session-1)/2)           
+%end
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
 targetDist = 0.15;
-targetCtr = [[ targetDist*cosd(30);
-               targetDist*cosd(60);
-               targetDist*cosd(120);
-               targetDist*cosd(150)], ...
-             [ targetDist*sind(30);
-               targetDist*sind(60);
-               targetDist*sind(120);
-               targetDist*sind(150)]] ;
+targetCtr  = targetDist* [ [cosd(30); cosd(60); cosd(120); cosd(150)], ... 
+                           [sind(30); sind(60); sind(120); sind(150)] ] ;
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 
@@ -217,8 +214,10 @@ for curTrial = 1:Ntrial
                 % Updated: compute trial-related KINEMATIC performance measures
                 [ t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,t_pd200_target,stpx,stpy,PeakVel ] = ...
                                                          get_Kinematic( trialData, targetCtr(m,:), sample_freq );
-                % Check criteria for successful trial!!                                     
-                if (dist2Target < targetSize/1000 && t_pd_target < targetSize/900) 
+                fprintf('   Distance: %.2f cm, and lateral error: %.2f cm\n', dist2Target*100, t_pd_target*100);
+
+                % Check criteria for reward: distance from target and ABS lateral error shd be within the target size
+                if (dist2Target < targetSize/1000 && abs(t_pd_target) < targetSize/900)   % updated, take absolute!
                     fprintf('   Target hit. Well done!\n');             
                     hitFlag = true;  hitCol = 'green';
                 else
@@ -227,7 +226,7 @@ for curTrial = 1:Ntrial
                 end
                 % Then save the performance data and reward status
                 toSave2 = [toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,...
-                                     t_pd200_target,stpx,stpy,PeakVel,hitFlag] ];
+                                     t_pd200_target,stpx,stpy,PeakVel,targetSize,hitFlag] ];
            end
             if (toc > 0.3)  % just a short delay here
                 trialFlag = 3;
@@ -337,8 +336,7 @@ for curTrial = 1:Ntrial
         trialData =  [ trialData; curTrial, trialFlag, m, ang(m), ...
                        double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                        double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                       hitFlag, hitScore, elapsed, double(instance.hman_data.state), ...
-                       double(instance.hman_data.force) ];
+                       hitFlag, hitScore, elapsed, double(instance.hman_data.state), double(instance.hman_data.force) ];
     end
     
     % We also append trajectory data to the Mega Array to be saved!
@@ -363,16 +361,12 @@ for curTrial = 1:Ntrial
    
 end
 
-%% Compute kinematic error performance.........
-mean(toSave2)
-
 %% Saving trial data.........
 dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
 dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
-close all;
 
 % Stop TCP connection 
 instance.CloseConnection();
@@ -384,8 +378,12 @@ fprintf("\nClosing connection to H-man................\n");
 sound(mywav, Fs);
 fprintf('\nTraining program has finished, bye!!\n');
 pause(1.0)
-close all; clear;  % Wait to return to MainMenu?
+close all; clc; % Wait to return to MainMenu?
+
+%% Compute average kinematic error
+%estimateSize(toSave2)
 fprintf("\nReturning to Main Menu selection..........\n");
+
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.

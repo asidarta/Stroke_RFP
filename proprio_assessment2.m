@@ -15,7 +15,7 @@ fprintf("\n------ Passive Matching Task with Keypress -----\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-%[subjID, ~, myresultfile] = collectInfo( "somato2" );
+[subjID, ~, myresultfile] = collectInfo( "somato2" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -58,7 +58,7 @@ global bailOut;  global replayOut;
 bailOut = false; replayOut = false;
 
 % Create circular target traces. Here, I define four target locations for reaching.
-targetDist = 0.15;
+targetDist = 0.11;
 
 c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
 plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
@@ -67,19 +67,13 @@ plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
       c(1,:)+targetDist*cosd(150),c(2,:)+targetDist*sind(150), 'LineWidth',5);
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
-% Here, I define four visual target locations for reaching.
-targetCtr = [[ targetDist*cosd(30);
-               targetDist*cosd(60);
-               targetDist*cosd(120);
-               targetDist*cosd(150)] * 1000, ...
-             [ targetDist*sind(30);
-               targetDist*sind(60);
-               targetDist*sind(120);
-               targetDist*sind(150)] * 1000] ;
+% NOTE: I don't define the targetDist here because the distance may vary in every loop !!
+targetCtr = 1000 * [[cosd(30); cosd(60); cosd(120); cosd(150)], [sind(30); sind(60); sind(120); sind(150)]] ;
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 % Define the required audio file: Ask subjects to stay relaxed!
-[relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax.mp3') );
+[eyes_wav, Fs] = audioread( strcat(myPath,'\Audio\close_eyes.mp3') );
+pause(2.0); sound(eyes_wav, Fs);
 
 
 
@@ -96,8 +90,8 @@ while (curTrial <= Ntrial) && (~bailOut)
 
     % (2) Set target position and other parameters
     start_X = 0;   start_Y = 0;
-    end_X   = targetCtr(m,1);  % Unit: mm -> m
-    end_Y   = targetCtr(m,2);  % Unit: mm -> m
+    end_X   = targetDist * targetCtr(m,1);  % Unit: mm -> m
+    end_Y   = targetDist * targetCtr(m,2);  % Unit: mm -> m
 
     % (3) Creating minimum jerk trajectory to target position
     out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t);
@@ -114,7 +108,7 @@ while (curTrial <= Ntrial) && (~bailOut)
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state) ];
+                           double(instance.hman_data.state), double(instance.hman_data.force) ];
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
@@ -144,7 +138,7 @@ while (curTrial <= Ntrial) && (~bailOut)
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state)];
+                           double(instance.hman_data.state), double(instance.hman_data.force)];
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
@@ -166,13 +160,12 @@ while (curTrial <= Ntrial) && (~bailOut)
     % (1) Ensure robot produces no force
     null_force(instance);
 
-    % (2) Set target position and other parameters
+    % (2) Set target position and other parameters. NOTE: Provide longer distance here (16 cm)!!
     start_X = 0;   start_Y = 0;
-    end_X   = targetCtr(m,1);  % Unit: mm -> m
-    end_Y   = targetCtr(m,2);  % Unit: mm -> m
+    end_X   = 0.16 * targetCtr(m,1);  % Unit: mm -> m
+    end_Y   = 0.16 * targetCtr(m,2);  % Unit: mm -> m
 
-    % (3) Creating minimum jerk trajectory to target position
-    % NOTE: Now the replay speed should be slower....
+    % (3) Creating minimum jerk trajectory to target position. NOTE: Now the speed must be slower!!
     t_replay = 0: 1/sample_freq : move_duration*10;
     out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t_replay);
     fprintf('   2. Passive matching trajectory.\n');
@@ -188,9 +181,10 @@ while (curTrial <= Ntrial) && (~bailOut)
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state) ];
+                           double(instance.hman_data.state), double(instance.hman_data.force) ];
         if (replayOut)
             fprintf('   3. Participant produced answer! Saving current position\n');
+            replayOut = false;
             break; % Shall bail out if we press any key!
         end
         if (bailOut)
@@ -226,7 +220,7 @@ while (curTrial <= Ntrial) && (~bailOut)
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state)];
+                           double(instance.hman_data.state), double(instance.hman_data.force)];
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
@@ -268,7 +262,6 @@ dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
-close all;
 
 % Stop TCP connection 
 instance.CloseConnection();
@@ -279,7 +272,7 @@ fprintf("\nClosing connection to H-man................\n");
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
 fprintf('\nProprioception Test-2 finished, bye!!\n');
-pause(4.0)
+pause(2.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection..........\n");
 

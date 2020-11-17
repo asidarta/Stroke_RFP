@@ -23,10 +23,10 @@ while (1)
     fprintf("Choose one of the following: \n");
     fprintf("   (1) Motor assessment \n");
     fprintf("   (2) Somatosensory assessment \n");
-    fprintf("   (3) Initial warm-up \n");
-    fprintf("   (4) Training (treatment or control?) \n");
-    fprintf("   (5) Passive training \n");
-    fprintf("   (6) Somatosensory assessment-2 \n");
+    fprintf("   (3) Somatosensory assessment-2 \n");
+    fprintf("   (4) Initial warm-up \n");
+    fprintf("   (5) Training (treatment or control?) \n");
+    fprintf("   (6) Passive training \n");
     fprintf("   (7) Quit program\n");
     
     testOption  = input('\nEnter your option: ','s');
@@ -36,16 +36,17 @@ while (1)
         case '2'
             run('proprio_assessment.m')
         case '3'
-            run('warming_up.m')
-        case '4'
-            run('motor_task_2.m')
-        case '5'
-            run('passive_task.m')
-        case '6'
             run('proprio_assessment2.m')
+        case '4'
+            run('warming_up.m')
+        case '5'
+            run('motor_task_2.m')
+        case '6'
+            run('passive_task.m')
         otherwise
-            fprintf("\nShutting down. Please wait!\n");
-            pause(2);
+            fprintf("\nClosing Matlab now. You may now shut down the computer, and")
+            fprintf("\nturn off the wireless keyboard and mouse.\n");
+            pause(5);
             quit
     end
 end

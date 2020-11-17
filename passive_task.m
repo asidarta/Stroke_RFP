@@ -210,7 +210,6 @@ end
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
-close all;
 
 % Stop TCP connection 
 instance.CloseConnection();

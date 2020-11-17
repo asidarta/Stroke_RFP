@@ -47,19 +47,13 @@ delay_at_target = 1;  % Hold at target position (sec)
 trialFlag = 0;
 
 % Define the SIZE of the target!
-targetSize = 15;  % >>>>>>>>>>>>>>
+targetSize = 30;  % >>>>>>>>>>>>>>
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
-targetDist = 0.1;   % >>>>>>>> This is shorter than usual reaching distance!
-targetCtr = [[ targetDist*cosd(30);
-               targetDist*cosd(60);
-               targetDist*cosd(120);
-               targetDist*cosd(150)], ...
-             [ targetDist*sind(30);
-               targetDist*sind(60);
-               targetDist*sind(120);
-               targetDist*sind(150)]] ;
+targetDist = 0.11;   % >>>>>>>> This is shorter than usual reaching distance!
+targetCtr  = targetDist* [ [cosd(30); cosd(60); cosd(120); cosd(150)], ... 
+                           [sind(30); sind(60); sind(120); sind(150)] ] ;
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 
@@ -71,7 +65,8 @@ fig = game_interface(1,0);
 instantCursor = plot(0,0,'k.');
 % Load the photo map, let the subject explore the map.
 photo = imread( strcat(myPath,'\Images\mbs.png') );
-aaaa  = image(flipud(photo),'XData',[-0.14 0.14],'YData',[-0.016 0.167]);
+aaaa  = image(flipud(photo),'XData',[-0.145 0.145],'YData',[-0.014 0.175]);
+hand  = imread( strcat(myPath,'\Images\hand.png') );
 
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
@@ -88,35 +83,32 @@ bailOut = false;
 % Basically subjecs free to make movement with the handle inside the
 % workspace, under no-force whatsoever. Do this exercise for max 5 minutes.
 
-pause(1.0);
 fprintf('\nPART 1: Press ANY key to proceed to next stage........\n');
-message = 'Move around the Singapore map';
-mytext  = text(-0.1,0.184,message,'FontSize',47,'Color','g');
+message = 'Pick the food!';
+mytext  = text(-0.04,0.186,message,'FontSize',47,'Color','w');
+pause_me(2.0);  
 
 % Play BEEP tone and disply MOVE cue for 1.5 sec!!
-goCue = plot_image(10, 0, 0.1, 40);
+goCue = plot_image(10, 0, 0.12, 40);
 play_tone(1250, 0.18);
-pause_me(1.25);
+pause_me(1.25);  h = 0;
 delete(goCue);  % delete from the plot after a sufficient time
 
 while (1)
     % Obtain H-MAN handle position in real-time and plot it. Convert to mm unit!
     myXpos = instance.hman_data.location_X; 
     myYpos = instance.hman_data.location_Y;
-    
+
+    % This controls how the CURSOR is displayed on the screen. Make the points transparent.
+    %instantCursor = scatter(myXpos,myYpos,200,'MarkerFaceColor','b','MarkerEdgeAlpha',0,'MarkerFaceAlpha',.3);
+    instantCursor = plot_image(9,myXpos,myYpos,12);
+   
     % Estimate the cursor speed (in mm, and use sample rate).........
     speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) * sample_freq;
-    if (speed > 2) %&& (dist2Start > 0.07)
-        if (mod(count,9)==0)   % just to prevent playing sound each time
-            sound(wind, Fs);
-        end
-    end
-    pause(0.009);  % give small delay!
+    pause(0.015);  % give small delay!
 
-    % This controls how the CURSOR is displayed on the screen.
-    instantCursor = plot(myXpos,myYpos,'b.','MarkerSize', 35);   
     lastXpos = myXpos; lastYpos = myYpos;
-    
+    delete(instantCursor);   % remove from the plot first, then redraw the cursor
     if (KbCheck)
         break; % Shall bail out if we press any key!
     end
@@ -125,13 +117,14 @@ end
 % Done with exercise. Remove all previous images.
 mychild = fig.Children.Children;
 delete(mychild); pause(0.5);
+% NOTE: You have to reset bailOut to false or else its value remains until the next stages
+bailOut = false;
 
 % Define the required audio file: Ask subjects to stay relaxed!
-relax = plot_image(11, 0, 0.1, 30);
-%[relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax2.mp3') );
-%sound(relax_wav, Fs);
-pause(3);
-delete(relax);
+relax = plot_image(11, 0, 0.12, 30);
+[relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax2.mp3') );
+sound(relax_wav, Fs);
+pause(3.5); delete(relax);
     
     
 % Create minimum jerk trajectory back to START position
@@ -153,7 +146,6 @@ end
 
 %% Part 2 - Main loop: looping through ALL trials! ------------------------
 fprintf('\nPART 2: Starting the resistive reaching task........\n');
-pause(3.0)
 for curTrial = 1:Ntrial
 
     % Preparting current target position, then plot the target location.
@@ -168,11 +160,11 @@ for curTrial = 1:Ntrial
     counter   = 0;      % Will be used for displaying cursor purposes
     
     % Plot the TARGET POSITION so as to show the subjects
-    plot_image( 13, targetCtr(m,1), targetCtr(m,2), targetSize );    
+    plot_image( m+20, targetCtr(m,1), targetCtr(m,2), targetSize );    
     pause_me(2.0);
     
     % Play BEEP tone and disply MOVE cue for 1.5 sec!!
-    goCue = plot_image(10, 0, 0.12, 25);
+    goCue = plot_image(10, 0, 0.156, 27);
     play_tone(1250, 0.18);
     pause_me(1.25);
     delete(goCue);  % delete from the plot after a sufficient time
@@ -198,7 +190,8 @@ for curTrial = 1:Ntrial
         % This controls how the CURSOR is displayed on the screen.
         if(counter == 8)
             delete(instantCursor);   % remove from the plot first, then redraw the cursor
-            instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);   
+            % = plot(myXpos,myYpos,'w.','MarkerSize',60); 
+            instantCursor = plot_image(9,myXpos,myYpos,12);
             counter = 0;
         else
             counter = counter + 1;            
@@ -213,7 +206,7 @@ for curTrial = 1:Ntrial
                 aimless_ = false;
                 tic;   % Start timer!
             end       
-            % Subject cannot be aimlessly reaching forever. Put 7cm reaching distance as limit.
+            % Subject cannot be aimlessly reaching forever. Put 7 cm reaching distance as the threshold.
             if (dist2Start < 0.07) 
                 if (toc > 6.0)   % this is 6-sec timeout!!!
                     aimless_ = true;
@@ -261,11 +254,10 @@ for curTrial = 1:Ntrial
             if (toc > 0.3)  % Wait for a while...
                 trialFlag = 3;
                 timerFlag = true;    % Update flag to allow new 'tic'   
-                fprintf('   Now moving back to START position.\n');
-                
+                fprintf('   Now moving back to START position.\n');                
                 % Ask subjects to relax before returning the hand back to start position
-                relax = plot_image(11, 0, 0.1, 30);
-                pause_me(1.5);
+                relax = plot_image(11, 0, 0.156, 27);
+                pause_me(1.8);
                 delete(relax);                    
             end
                 
@@ -316,8 +308,7 @@ for curTrial = 1:Ntrial
             end       
         end
         % The position value at t-1
-        lastXpos = myXpos;   lastYpos = myYpos;
-        
+        lastXpos = myXpos;   lastYpos = myYpos;        
         % Elapsed time per loop
         elapsed = toc(tstart);
         
@@ -350,25 +341,24 @@ for curTrial = 1:Ntrial
 
     % CONTINUE TO THE NEXT TRIAL.....
     t1 = text(-0.04,0.16,'Next trial~','FontSize',55,'FontWeight','bold','Color','w');
-    pause(0.01); 
+    pause(0.1); 
     curTrial = curTrial + 1; 
-    pause_me(delay_at_target);     % Let's pause for a while...
+    pause_me(1.5*delay_at_target);     % Let's pause for a while...
     delete(t1);                    % then remove the text from the screen
-    
+
     if (bailOut)
         break; % Shall bail out if we press any key!
     end
-   
+
 end
 
 
 %% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
-dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
+%dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
+%dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
-close all;
 
 % Stop TCP connection 
 instance.CloseConnection();
@@ -376,8 +366,7 @@ instance.CloseConnection();
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
 fprintf('\nWarming up finished, bye!!\n');
-pause(3.0)
-
+pause(2.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection........\n");
 

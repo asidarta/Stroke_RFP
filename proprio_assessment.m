@@ -68,18 +68,13 @@ plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
-targetCtr = [[ targetDist*cosd(30);
-               targetDist*cosd(60);
-               targetDist*cosd(120);
-               targetDist*cosd(150)] * 1000, ...
-             [ targetDist*sind(30);
-               targetDist*sind(60);
-               targetDist*sind(120);
-               targetDist*sind(150)] * 1000] ;
+targetCtr  = targetDist* [ [cosd(30); cosd(60); cosd(120); cosd(150)], ... 
+                           [sind(30); sind(60); sind(120); sind(150)] ] ;
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 % Define the required audio file: Ask subjects to stay relaxed!
-[relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax.mp3') );
+[eyes_wav, Fs] = audioread( strcat(myPath,'\Audio\close_eyes.mp3') );
+pause(2.0); sound(eyes_wav, Fs);
 
 
 
@@ -96,8 +91,8 @@ while (curTrial <= Ntrial) && (~bailOut)
 
     % (2) Set target position and other parameters
     start_X = 0;   start_Y = 0;
-    end_X   = targetCtr(m,1);  % Unit: mm -> m
-    end_Y   = targetCtr(m,2);  % Unit: mm -> m
+    end_X   = 1000 * targetCtr(m,1);  % Unit: mm -> m
+    end_Y   = 1000 * targetCtr(m,2);  % Unit: mm -> m
 
     % (3) Creating minimum jerk trajectory to target position
     out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t);
@@ -114,7 +109,7 @@ while (curTrial <= Ntrial) && (~bailOut)
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state) ];
+                           double(instance.hman_data.state), double(instance.hman_data.force) ];
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
@@ -144,7 +139,7 @@ while (curTrial <= Ntrial) && (~bailOut)
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state)];
+                           double(instance.hman_data.state), double(instance.hman_data.force)];
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
@@ -170,8 +165,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     
     % PART 2: Let the user moves the handle to a target position ----------------------
     % (1) Preparation. Produce zero force.   
-    trialFlag = 1; 
-    %a = []; 
+    trialFlag = 1; %a = []; 
     fprintf('   2. Now joint position matching\n');
     j = 1;
     null_force(instance);
@@ -198,7 +192,7 @@ while (curTrial <= Ntrial) && (~bailOut)
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ...
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                            double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                           double(instance.hman_data.state)];
+                           double(instance.hman_data.state), double(instance.hman_data.force)];
         %a = [a; speed];
         %figure(2); plot(a); ylim([0 2]); hold on;
 
@@ -297,7 +291,6 @@ dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
-close all;
 
 % Stop TCP connection 
 instance.CloseConnection();
@@ -308,7 +301,7 @@ fprintf("\nClosing connection to H-man................\n");
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
 fprintf('\nProprioception Test finished, bye!!\n');
-pause(4.0)
+pause(2.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection..........\n");
 

@@ -45,20 +45,14 @@ delay_at_target = 1;  % Hold at target position (sec)
 %        4: stay and ready for next trial
 trialFlag = 0;
 
-% Define the SIZE of the target!
+% Define the SIZE of the target! This is smaller than the one used in training.
 targetSize = 10;  %>>>>>>>>>>>>>>
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
 targetDist = 0.15;
-targetCtr = [[ targetDist*cosd(30);
-               targetDist*cosd(60);
-               targetDist*cosd(120);
-               targetDist*cosd(150)], ...
-             [ targetDist*sind(30);
-               targetDist*sind(60);
-               targetDist*sind(120);
-               targetDist*sind(150)]] ;
+targetCtr  = targetDist* [ [cosd(30); cosd(60); cosd(120); cosd(150)], ... 
+                           [sind(30); sind(60); sind(120); sind(150)] ] ;
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 
@@ -299,7 +293,6 @@ dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
-close all;
 
 % Stop TCP connection 
 instance.CloseConnection();
