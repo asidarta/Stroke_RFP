@@ -15,7 +15,7 @@ fprintf("\n--------   Motor Assessment   --------\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-[subjID, ~, myresultfile] = collectInfo( "motor" );
+[subjID, ~, ~, myresultfile] = collectInfo( "motor" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -59,7 +59,7 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display!
-fig = game_interface(1,0);
+fig = game_interface(1,0,imgNum);
 instantCursor = plot(0,0,'k.');
 
 % Define keyboard press function associated with the window!
@@ -95,11 +95,11 @@ for curTrial = 1:Ntrial
     % Plot the TARGET POSITION so as to show the subjects
     pause_me(1.5);
     %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
-    plot_image( 12, targetCtr(m,1), targetCtr(m,2), targetSize );    
+    plot_image( [], 12, targetCtr(m,1), targetCtr(m,2), targetSize );    
     pause_me(1.5);
 
     % Play BEEP tone and disply MOVE cue for 1.5 sec!!
-    goCue = plot_image(10, 0, 0.1, 30);
+    goCue = plot_image([], 10, 0, 0.1, 30);
     play_tone(1250, 0.18);
     pause_me(1.25);
     delete(goCue);  % delete from the plot after a sufficient time
@@ -181,7 +181,7 @@ for curTrial = 1:Ntrial
                 fprintf('   Now moving back to START position.\n');
                 
                 % Ask subjects to relax before returning the hand back to start position
-                relax = plot_image(11, 0, 0.1, 30);
+                relax = plot_image([], 11, 0, 0.1, 30);
                 pause_me(1.5);
                 delete(relax);                    
             end

@@ -15,7 +15,7 @@ fprintf("\n------ Passive Matching Task with Keypress -----\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-[subjID, ~, myresultfile] = collectInfo( "somato2" );
+[subjID, ~, ~, myresultfile] = collectInfo( "somato2" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -49,7 +49,7 @@ delay_at_target = 1.0;  % Hold at target position (sec)
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display!
-fig = game_interface(1,0);
+fig = game_interface(1,0,0);
 
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);

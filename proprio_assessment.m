@@ -15,7 +15,7 @@ fprintf("\n--------   Joint Position Matching   --------\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-[subjID, ~, myresultfile] = collectInfo( "somato_jpm" );
+[subjID, ~, ~, myresultfile] = collectInfo( "somato_jpm" );
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -49,7 +49,7 @@ delay_at_target = 1.0;  % Hold at target position (sec)
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display!
-fig = game_interface(1,0);
+fig = game_interface(1,0,0);
 
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
@@ -157,7 +157,7 @@ while (curTrial <= Ntrial) && (~bailOut)
 
     % (8) Play BEEP tone and display MOVE cue for 1.5 sec...
     %pause_me(1);  
-    goCue = plot_image(10, 0, 0.1, 20);
+    goCue = plot_image([], 10, 0, 0.1, 20);
     play_tone(1250, 0.2);
     pause_me(delay_at_target);
     pause_me(delay_at_target);  

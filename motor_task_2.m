@@ -15,7 +15,9 @@ fprintf("Take note whether this client is a control group.... \n\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-[subjID, session, myresultfile] = collectInfo( "train" );   %targetSize = input('\nEnter target size: ');
+%     imgNum refers to block number per session...
+[subjID, session, imgNum, myresultfile] = collectInfo( "train" );   
+%targetSize = input('\nEnter target size: ');
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -76,7 +78,8 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 % Open an empty figure, remove the toolbar
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display! Display background too...
-fig = game_interface(1,1);
+%imgNum = 1;                 % Added feature for displaying game theme!
+fig = game_interface(1,1,imgNum);
 instantCursor = plot(0,0,'k.');  
 
 % Define keyboard press function associated with the window!
@@ -114,11 +117,11 @@ for curTrial = 1:Ntrial
     % Plot the TARGET POSITION so as to show the subjects
     pause_me(1.5);
     %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
-    plot_image( m, targetCtr(m,1), targetCtr(m,2), targetSize );    
+    plot_image( imgNum, m, targetCtr(m,1), targetCtr(m,2), targetSize );    
     pause_me(1.5);
 
     % Play BEEP tone and disply MOVE cue for 1.5 second!!
-    goCue = plot_image(10, 0, 0.1, 30);
+    goCue = plot_image([], 10, 0, 0.1, 30);
     play_tone(1250, 0.18);
     pause_me(1.25);
     delete(goCue);  % delete from the plot after a sufficient time

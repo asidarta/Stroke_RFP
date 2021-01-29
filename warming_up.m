@@ -61,7 +61,7 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display!
-fig = game_interface(1,0);
+fig = game_interface(1,0,0);
 instantCursor = plot(0,0,'k.');
 % Load the photo map, let the subject explore the map.
 photo = imread( strcat(myPath,'\Images\mbs.png') );
@@ -89,7 +89,7 @@ mytext  = text(-0.04,0.186,message,'FontSize',47,'Color','w');
 pause_me(2.0);  
 
 % Play BEEP tone and disply MOVE cue for 1.5 sec!!
-goCue = plot_image(10, 0, 0.12, 40);
+goCue = plot_image([], 10, 0, 0.12, 40);
 play_tone(1250, 0.18);
 pause_me(1.25);  h = 0;
 delete(goCue);  % delete from the plot after a sufficient time
@@ -101,7 +101,7 @@ while (1)
 
     % This controls how the CURSOR is displayed on the screen. Make the points transparent.
     %instantCursor = scatter(myXpos,myYpos,200,'MarkerFaceColor','b','MarkerEdgeAlpha',0,'MarkerFaceAlpha',.3);
-    instantCursor = plot_image(9,myXpos,myYpos,12);
+    instantCursor = plot_image([],9,myXpos,myYpos,12);
    
     % Estimate the cursor speed (in mm, and use sample rate).........
     speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) * sample_freq;
@@ -121,7 +121,7 @@ delete(mychild); pause(0.5);
 bailOut = false;
 
 % Define the required audio file: Ask subjects to stay relaxed!
-relax = plot_image(11, 0, 0.12, 30);
+relax = plot_image([], 11, 0, 0.12, 30);
 [relax_wav, Fs] = audioread( strcat(myPath,'\Audio\relax2.mp3') );
 sound(relax_wav, Fs);
 pause(3.5); delete(relax);
@@ -160,11 +160,11 @@ for curTrial = 1:Ntrial
     counter   = 0;      % Will be used for displaying cursor purposes
     
     % Plot the TARGET POSITION so as to show the subjects
-    plot_image( m+20, targetCtr(m,1), targetCtr(m,2), targetSize );    
+    plot_image( [], m+20, targetCtr(m,1), targetCtr(m,2), targetSize );    
     pause_me(2.0);
     
     % Play BEEP tone and disply MOVE cue for 1.5 sec!!
-    goCue = plot_image(10, 0, 0.156, 27);
+    goCue = plot_image([], 10, 0, 0.156, 27);
     play_tone(1250, 0.18);
     pause_me(1.25);
     delete(goCue);  % delete from the plot after a sufficient time
@@ -191,7 +191,7 @@ for curTrial = 1:Ntrial
         if(counter == 8)
             delete(instantCursor);   % remove from the plot first, then redraw the cursor
             % = plot(myXpos,myYpos,'w.','MarkerSize',60); 
-            instantCursor = plot_image(9,myXpos,myYpos,12);
+            instantCursor = plot_image([], 9,myXpos,myYpos,12);
             counter = 0;
         else
             counter = counter + 1;            
@@ -256,7 +256,7 @@ for curTrial = 1:Ntrial
                 timerFlag = true;    % Update flag to allow new 'tic'   
                 fprintf('   Now moving back to START position.\n');                
                 % Ask subjects to relax before returning the hand back to start position
-                relax = plot_image(11, 0, 0.156, 27);
+                relax = plot_image([], 11, 0, 0.156, 27);
                 pause_me(1.8);
                 delete(relax);                    
             end

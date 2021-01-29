@@ -1,22 +1,24 @@
 
-function myOutput = plot_Image(ind, xpos, ypos, imgSize)
-% Input  = image centre position (x,y), image size, and index.
+function myOutput = plot_image(imgNum, ind, xpos, ypos, imgSize)
+% Input  = image centre position (x,y), image number, image size, and index.
+%          image number is randomized number so that each block will have different 
+%          background/monster/music (range: 0 to 4)
 % Output = handler to the image 
 
+imgSize = imgSize/1000;     % adjusting the unit (mm -> metre)
 
-imgSize = imgSize/1000;     % adjusting the unit (mm -> metre)!
-
-myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';
+myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';  % working directory!
+myPath = strcat(myPath, num2str(imgNum), '\');
 
 switch( ind )   % image index
     case 1 
-        myImage = 'monster1.png';
+        myImage = 'image1.png'; % Use the common name for all theme, regardless of what theme you selected, e.g. image1, or target1
     case 2 
-        myImage = 'monster2.png';
+        myImage = 'image2.png'; %then this will be image2, or target2
     case 3 
-        myImage = 'monster3.png';
+        myImage = 'image3.png';
     case 4
-        myImage = 'monster4.png';
+        myImage = 'image4.png';
     case 5 
         myImage = 'monster5.png';
     case 9 
