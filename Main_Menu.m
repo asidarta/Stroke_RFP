@@ -2,7 +2,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %------   Note: This is the MAIN INTERFACE to run many different   ------
-%------   robotic tasks in H-man.  (Ananda, Aug 2020)              ------
+%------   robotic tasks in H-man.  (Ananda, Feb 2021)              ------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clear; clc; close all;
@@ -14,7 +14,7 @@ s.matlab.fonts.codefont.Size.TemporaryValue = 15; % points, make Matlab display 
 sound(mywav, Fs);
 
 fprintf("\n------------------------------------------------------------------\n");
-fprintf("     Welcome to Act.Sens Main User Interface! (ver. Sept 2020)     \n");
+fprintf("     Welcome to Act.Sens Main User Interface! (ver. Feb 2021)       \n");
 fprintf("------------------------------------------------------------------\n\n");
 pause(3);
 
@@ -26,7 +26,7 @@ while (1)
     fprintf("   (3) Somatosensory assessment-2 \n");
     fprintf("   (4) Initial warm-up \n");
     fprintf("   (5) Training (treatment or control?) \n");
-    fprintf("   (6) Passive training \n");
+    %fprintf("   (6) Passive training \n");
     fprintf("   (7) Quit program\n");
     
     testOption  = input('\nEnter your option: ','s');

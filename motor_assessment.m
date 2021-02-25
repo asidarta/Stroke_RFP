@@ -15,12 +15,12 @@ fprintf("\n--------   Motor Assessment   --------\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-[subjID, ~, ~, myresultfile] = collectInfo( "motor" );
+[subjID, session, imgNum, myresultfile] = collectInfo( "motor" );
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 40;
-hitScore  = 0;   % Add +10 for each success
+Ntrial = 20;     % Total number of trials per block >>>
+hitScore  = 0;   % (Not applicable for assessment)
 toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!!
 eachTrial = Shuffle(toshuffle);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
@@ -35,7 +35,7 @@ move_duration = 0.8;
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1; 
 timerFlag = true;
-delay_at_target = 1;  % Hold at target position (sec)
+delay_at_target = 1.5;  % Hold at target position and inter-trial delay (sec)
 
 % Create a flag to denote which stages of the movement it is:
 %        0: hand still stationary at the start
@@ -44,7 +44,8 @@ delay_at_target = 1;  % Hold at target position (sec)
 %        3: move back to the start
 %        4: stay and ready for next trial
 trialFlag = 0;
-
+hold_pos(instance);  % >>>>>>>
+ 
 % Define the SIZE of the target! This is smaller than the one used in training.
 targetSize = 10;  %>>>>>>>>>>>>>>
 
@@ -59,7 +60,8 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display!
-fig = game_interface(1,0,imgNum);
+imgNum = 6; 
+fig = game_interface(1,1,imgNum);
 instantCursor = plot(0,0,'k.');
 
 % Define keyboard press function associated with the window!
@@ -78,7 +80,7 @@ txt4 = 'Try again...';
 
 
 %% Main loop: looping through ALL trials! ----------------------------------
-pause_me(2.0);
+pause_me(2.0); 
 for curTrial = 1:Ntrial
 
     % Preparting current target position, then plot the target location.
@@ -93,14 +95,14 @@ for curTrial = 1:Ntrial
     counter   = 0;      % Will be used for displaying cursor purposes
     
     % Plot the TARGET POSITION so as to show the subjects
-    pause_me(1.5);
+    pause_me(delay_at_target);
     %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
     plot_image( [], 12, targetCtr(m,1), targetCtr(m,2), targetSize );    
-    pause_me(1.5);
+    pause_me(delay_at_target);
 
     % Play BEEP tone and disply MOVE cue for 1.5 sec!!
     goCue = plot_image([], 10, 0, 0.1, 30);
-    play_tone(1250, 0.18);
+    play_tone(1250, 0.15);
     pause_me(1.25);
     delete(goCue);  % delete from the plot after a sufficient time
     
@@ -182,7 +184,7 @@ for curTrial = 1:Ntrial
                 
                 % Ask subjects to relax before returning the hand back to start position
                 relax = plot_image([], 11, 0, 0.1, 30);
-                pause_me(1.5);
+                pause_me(delay_at_target);
                 delete(relax);                    
             end
                 
@@ -200,7 +202,7 @@ for curTrial = 1:Ntrial
                 pos_index = pos_index + 1;
                 instance.SetTarget( xt(pos_index,:),yt(pos_index,:),kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0' ); 
             else
-                hold_pos(instance);
+                hold_pos(instance);  % >>>>>>>
                 % Go to the LAST stage
                 trialFlag = 4;
                 timerFlag = true;    % Update flag to allow new 'tic'   
@@ -287,9 +289,14 @@ for curTrial = 1:Ntrial
 end
 
 
-%% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
-dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
+%% Saving trajectory and trial-outcome data as tables with headers!
+varNames = {'trial','flag','m','angle','posX','posY','velX','velY','hit','score','elapsed','emerg','force'};
+writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
+            strcat(myPath, 'Trial Data\',myresultfile,'.csv'));
+varNames = {'curTrial','dist2Target','t_meanpd_target','t_area_target','t_pd_target','t_pdmaxv_target', ...
+            't_pd200_target','stpx','stpy','PeakVel'};
+writetable( array2table(toSave2,'VariableNames',varNames), ... % Trial result data
+            strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'));         
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 

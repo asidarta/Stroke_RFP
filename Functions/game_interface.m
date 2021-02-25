@@ -54,8 +54,9 @@ if (flag)
     c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
     plot( c(1,:),c(2,:), 'LineWidth',5 ); 
        
-    % (5) This is for the background music. Ensure this window doesn't distract
-    soundfig = figure(3);  soundfig.WindowState = 'minimized';
+    % (5) This is for the background music. Ensure this window is minimized not to distract
+    soundfig = figure(3);  
+    soundfig.WindowState = 'minimized';
     actx = actxcontrol('WMPlayer.ocx.7'); % Create controller
     media = actx.newMedia(strcat(myPath,'\music.mp3')); % Create media object
     actx.CurrentMedia = media;

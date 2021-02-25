@@ -19,7 +19,7 @@ fprintf("\n------ Passive Matching Task with Keypress -----\n");
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 40;
+Ntrial = 20;    % Total number of trials per block
 toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!
 eachTrial = Shuffle(toshuffle);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
@@ -74,7 +74,7 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 % Define the required audio file: Ask subjects to stay relaxed!
 [eyes_wav, Fs] = audioread( strcat(myPath,'\Audio\close_eyes.mp3') );
 pause(2.0); sound(eyes_wav, Fs);
-
+text(-0.07,0.13,'Eyes closed and always relax!','FontSize',33,'FontWeight','bold','Color','g');
 
 
 %% TRIAL LOOP = Keep looping until Ntrial is met OR a key is pressed
@@ -251,7 +251,6 @@ end
 
 
 %% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
         % Recording important kinematic data for each trial
         %    col-1 : Trial number
         %    col-2 : Stage of movement
@@ -259,6 +258,10 @@ dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'.csv'), toSave);
         %    col-5,6 : handle X,Y position
         %    col-7,8 : handle X,Y velocity
         %    col-9   : Emergency button state
+        %    col-10  : force value
+varNames = {'trial','flag','m','angle','posX','posY','velX','velY','emerg','force'};
+writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
+            strcat(myPath, 'Trial Data\',myresultfile,'.csv')); 
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 

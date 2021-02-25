@@ -15,12 +15,12 @@ fprintf("\n--------  Warming up (Preparation)   --------\n");
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 % (0) Produce filename for the current trial based on user-defined information
-%[subjID, ~, myresultfile] = collectInfo( "warm" );
+[subjID, session, imgNum, myresultfile] = collectInfo( "warmup" );
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 20;
-hitScore  = 0;   % Add +10 for each success
+Ntrial = 20;    % The number of trials per block
+hitScore  = 0;  % Add +10 for each success
 toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!!
 eachTrial = Shuffle(toshuffle);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
@@ -75,7 +75,14 @@ global bailOut
 bailOut = false;
 
 % Define the required audio file
-[wind, Fs] = audioread( strcat(myPath,'\Audio\wind.mp3') );
+soundfig = figure(3);  soundfig.WindowState = 'minimized';
+actx = actxcontrol('WMPlayer.ocx.7'); % Create controller
+media = actx.newMedia(strcat(myPath,'\Audio\food.mp3')); % Create media object
+actx.CurrentMedia = media;
+actx.settings.playCount = 999; % Play the media 999 times
+% actx.Controls.play;
+% To hide the fig, in this case music won't stop without closing this figure
+soundfig.set('DefaultFigureVisible','on'); 
 
 
 
@@ -83,14 +90,14 @@ bailOut = false;
 % Basically subjecs free to make movement with the handle inside the
 % workspace, under no-force whatsoever. Do this exercise for max 5 minutes.
 
-fprintf('\nPART 1: Press ANY key to proceed to next stage........\n');
+fprintf('\nPART 1: Press ESCAPE  key to proceed to next stage........\n');
 message = 'Pick the food!';
 mytext  = text(-0.04,0.186,message,'FontSize',47,'Color','w');
 pause_me(2.0);  
 
 % Play BEEP tone and disply MOVE cue for 1.5 sec!!
 goCue = plot_image([], 10, 0, 0.12, 40);
-play_tone(1250, 0.18);
+play_tone(1250, 0.15);
 pause_me(1.25);  h = 0;
 delete(goCue);  % delete from the plot after a sufficient time
 
@@ -107,18 +114,26 @@ while (1)
     speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) * sample_freq;
     pause(0.015);  % give small delay!
 
+    trialData =  [ trialData; double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
+                   double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y)];
+    
     lastXpos = myXpos; lastYpos = myYpos;
     delete(instantCursor);   % remove from the plot first, then redraw the cursor
-    if (KbCheck)
-        break; % Shall bail out if we press any key!
+    if (bailOut)
+        break; % Shall bail out if we press ESC key!
     end
 end
+
+% Save the data to check the Range of Motion!
+varNames = {'posX','posY','velX','velY'};
+writetable( array2table(trialData,'VariableNames',varNames), strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'));
 
 % Done with exercise. Remove all previous images.
 mychild = fig.Children.Children;
 delete(mychild); pause(0.5);
 % NOTE: You have to reset bailOut to false or else its value remains until the next stages
 bailOut = false;
+trialData = double.empty();  % Reset the content for subsequent use
 
 % Define the required audio file: Ask subjects to stay relaxed!
 relax = plot_image([], 11, 0, 0.12, 30);
@@ -165,13 +180,12 @@ for curTrial = 1:Ntrial
     
     % Play BEEP tone and disply MOVE cue for 1.5 sec!!
     goCue = plot_image([], 10, 0, 0.156, 27);
-    play_tone(1250, 0.18);
+    play_tone(1250, 0.15);
     pause_me(1.25);
     delete(goCue);  % delete from the plot after a sufficient time
     
     % While the handle is free and subject starts moving by himself...
     while (~KbCheck && ~nextTrial)
-    
         % Data rate, pause in-between loop
         tstart = tic;   % this is to calculate elapsed time per loop
         pause(1/sample_freq);
@@ -196,18 +210,19 @@ for curTrial = 1:Ntrial
         else
             counter = counter + 1;            
         end
-        
+
         switch( trialFlag )
         % STAGE-1 : Moving towards the target (press any key to exit)
         case 1            
             % Important! Now set resistive force, preventing it from leaving the START  >>>>>>>>>>
             instance.SetTarget('0','0','200','200','0','0','0','0','0','0','1','0');
             if (aimless_)
-                aimless_ = false;
+                aimless_ = false; 
                 tic;   % Start timer!
+                t2 = text(-0.05,0.15,'Hit the centre!','FontSize',50,'FontWeight','bold','Color','w');
             end       
             % Subject cannot be aimlessly reaching forever. Put 7 cm reaching distance as the threshold.
-            if (dist2Start < 0.07) 
+            if (dist2Start < 0.1) 
                 if (toc > 6.0)   % this is 6-sec timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
@@ -242,7 +257,7 @@ for curTrial = 1:Ntrial
             if (timerFlag)
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
-                
+                delete(t2);      % then remove the text from the screen
                 % Updated: compute trial-related KINEMATIC performance measures
                 [ t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,t_pd200_target,...
                         stpx, stpy, PeakVel ] =  get_Kinematic( trialData, targetCtr(m,:), sample_freq );
@@ -302,7 +317,7 @@ for curTrial = 1:Ntrial
                 timerFlag = false;    % Update flag so as to prevent 'tic' again
                 null_force(instance); % RELEASE the handle holding force; >>>>>>>>>>>
             end
-            if (dist2Start > 0.004 && speed > 10)
+            if (dist2Start > 0.004 && speed > 5)
                 trialFlag = 1;  fprintf("   Handle starts moving!\n");
                 timerFlag = true;     % Reset flag to allow new 'tic'
             end       
@@ -344,7 +359,7 @@ for curTrial = 1:Ntrial
     pause(0.1); 
     curTrial = curTrial + 1; 
     pause_me(1.5*delay_at_target);     % Let's pause for a while...
-    delete(t1);                    % then remove the text from the screen
+    delete(t1);      % then remove the text from the screen
 
     if (bailOut)
         break; % Shall bail out if we press any key!
