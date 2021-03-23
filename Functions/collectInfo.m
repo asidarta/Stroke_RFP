@@ -57,10 +57,10 @@ filename = strcat(subjID,'\',num2str(session),'\',subjID,'_',strName,'_',num2str
 %% Important!! 
 % We have to check if the subject folder has been created in the working directory. 
 if ~exist(strcat(mypath,subjID), 'dir')
-    fprintf('Subject folder not found. Creating one....\n');
+    fprintf('Subject folder not found. Creating one....\n\n');
     mkdir(strcat(mypath,subjID))    % name the folder as subjID!
 else
-    fprintf('Subject folder found. No need to create one\n');
+    fprintf('Subject folder found. No need to create one\n\n');
 end
 
 if ~exist(strcat(mypath,subjID,'\',num2str(session)), 'dir')

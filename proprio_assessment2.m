@@ -20,14 +20,13 @@ fprintf("\n------ Passive Matching Task with Keypress -----\n");
 
 %% Trial-related parameters -----------------------------------------------
 Ntrial = 20;    % Total number of trials per block
-toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!
-eachTrial = Shuffle(toshuffle);
+toshuffle = repmat(1:4,[1 Ntrial/4]);     % We have 4 target directions!!
+eachTrial = Shuffle(toshuffle);           % We shuffle the target position
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
-
 trialData = double.empty();
-toSave = double.empty();
-lastXpos = instance.hman_data.location_X; 
-lastYpos = instance.hman_data.location_Y;
+toSave = double.empty();     % Initialize variable to save kinematic data
+lastXpos = instance.hman_data.location_X;  % To contain robot latest Ypos
+lastYpos = instance.hman_data.location_Y;  % To contain robot latest Ypos
 k_asst = 250;   % max Stiffness value (N/m) for assistive mode
 
 % Create a flag to denote which stages of the movement it is:
@@ -38,11 +37,11 @@ k_asst = 250;   % max Stiffness value (N/m) for assistive mode
 trialFlag = 1;
 
 % Sample frequency, timing parameters ------------------------------------
-sample_freq = 200;
-move_duration = 1.0;   % estimated to be 2 sec movement!
+sample_freq = 200;      % Define so that sample freq remains the same!
+move_duration = 1.0;    % estimated to be 2 sec movement!
 t = 0: 1/sample_freq : move_duration;
-curTrial = 1; 
-timerFlag = true;
+curTrial = 1;           % Initialize current trial=1
+timerFlag = true;       % Inttialize timerFlag to activate timer
 delay_at_target = 1.0;  % Hold at target position (sec)
 
 
@@ -54,8 +53,10 @@ fig = game_interface(1,0,0);
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
 % Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut;  global replayOut;  
-bailOut = false; replayOut = false;
+global bailOut;  
+global replayOut;  
+global pauseFlag;
+bailOut = false;   replayOut = false;   pauseFlag = false;
 
 % Create circular target traces. Here, I define four target locations for reaching.
 targetDist = 0.11;
@@ -152,8 +153,13 @@ while (curTrial <= Ntrial) && (~bailOut)
     end
         
     % (7) Hold the handle position at the START.
-    hold_pos(instance);
-    pause_me(delay_at_target);  
+    hold_pos(instance);  pause_me(delay_at_target);  
+    
+    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
+        pauseText = text(-0.04,0.16,"Pausing...",'FontSize',55,'Color','w','FontWeight','bold');
+        pause(0.5);
+        delete(pauseText);
+    end
     
     
     % PART 2: Let the user moves the handle to a target position ----------------------
@@ -281,16 +287,22 @@ fprintf("\nReturning to Main Menu selection..........\n");
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
+% Another key press events are for response and pausing the game...
 function [bailOut, replayOut] = KeyPressFcn(~,evnt)
-    global bailOut;  global replayOut
+    global bailOut;  global replayOut;  global pauseFlag;
     %fprintf('key event is: %s\n',evnt.Key);
     if(evnt.Key=="escape")
-       bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
+       bailOut = true;
        replayOut = false;
     end
-    %fprintf('key event is: %s\n',evnt.Key);
     if(evnt.Key=="return")
        bailOut = false;
        replayOut = true;
+    end
+    if(evnt.Key=="space")
+       pauseFlag = ~pauseFlag; 
+       if (pauseFlag), fprintf("Pausing the game now.....\n");
+       else, fprintf("Continuing the game now.....\n");
+       end
     end
 end

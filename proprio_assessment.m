@@ -20,14 +20,13 @@ fprintf("\n--------   Joint Position Matching   --------\n");
 
 %% Trial-related parameters -----------------------------------------------
 Ntrial = 20;    % Total number of trials per block
-toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!
-eachTrial = Shuffle(toshuffle);
+toshuffle = repmat(1:4,[1 Ntrial/4]);    % We have 4 target directions!!
+eachTrial = Shuffle(toshuffle);          % We shuffle the target position
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
-
 trialData = double.empty();
-toSave = double.empty();
-lastXpos = instance.hman_data.location_X; 
-lastYpos = instance.hman_data.location_Y;
+toSave = double.empty();      % Initialize variable to save kinematic data
+lastXpos = instance.hman_data.location_X;  % To contain robot latest Xpos
+lastYpos = instance.hman_data.location_Y;  % To contain robot latest Ypos
 k_asst = 250;   % max Stiffness value (N/m) for assistive mode
 
 % Create a flag to denote which stages of the movement it is:
@@ -38,11 +37,11 @@ k_asst = 250;   % max Stiffness value (N/m) for assistive mode
 trialFlag = 1;
 
 % Sample frequency, timing parameters ------------------------------------
-sample_freq = 200;
+sample_freq = 200;      % Define so that sample freq remains the same!
 move_duration = 1.0;    % estimated to be 2 sec movement!
 t = 0: 1/sample_freq : move_duration;
-curTrial = 1; 
-timerFlag = true;
+curTrial = 1;           % Initialize current trial=1
+timerFlag = true;       % Inttialize timerFlag to activate timer
 delay_at_target = 1.0;  % Hold at target position (sec)
 
 
@@ -54,17 +53,19 @@ fig = game_interface(1,0,0);
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
 % Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut    
-bailOut = false;
+global bailOut;
+global pauseFlag;
+bailOut = false;  pauseFlag = false;
 
 % Create circular target traces. Here, I define four target locations for reaching.
 targetDist = 0.15;
 
 c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
+plot( c(1,:),c(2,:),'b','LineWidth',5 ); hold on;
 plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
       c(1,:)+targetDist*cosd(60), c(2,:)+targetDist*sind(60), ... 
       c(1,:)+targetDist*cosd(120),c(2,:)+targetDist*sind(120), ...
-      c(1,:)+targetDist*cosd(150),c(2,:)+targetDist*sind(150), 'LineWidth',5);
+      c(1,:)+targetDist*cosd(150),c(2,:)+targetDist*sind(150), 'LineWidth',5); 
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
@@ -75,7 +76,7 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 % Define the required audio file: Ask subjects to stay relaxed!
 [eyes_wav, Fs] = audioread( strcat(myPath,'\Audio\close_eyes.mp3') );
 pause(2.0); sound(eyes_wav, Fs);
-text(-0.07,0.16,'Eyes closed and always relax!','FontSize',33,'FontWeight','bold','Color','g');
+text(-0.07,0.16,'Eyes closed and always relax!','FontSize',35,'FontWeight','bold','Color','g');
 
 
 %% TRIAL LOOP = Keep looping until Ntrial is met OR a key is pressed
@@ -105,6 +106,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     for j = 1:length(out)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
+        plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'b.');
         pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
@@ -117,7 +119,7 @@ while (curTrial <= Ntrial) && (~bailOut)
    
     if (~isempty(trialData))
         % Plot this trajectory. Save trial data into a mega array;    
-        h1 = plot(trialData(:,5), trialData(:,6), 'b.');
+        %h1 = plot(trialData(:,5), trialData(:,6), 'b.');
         toSave = [toSave; trialData];
         trialData = double.empty();
     end
@@ -135,6 +137,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     for j = 1:length(out2)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
+        plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'b.');
         pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
@@ -147,7 +150,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     
     if (~isempty(trialData))
         % Plot this trajectory. Save trial data into a mega array;    
-        h2 = plot(trialData(:,5), trialData(:,6), 'b.');
+        %h2 = plot(trialData(:,5), trialData(:,6), 'b.');
         toSave = [toSave; trialData];
         trialData = double.empty();
     end
@@ -162,7 +165,12 @@ while (curTrial <= Ntrial) && (~bailOut)
     pause_me(delay_at_target);
     pause_me(delay_at_target);  
     
-    
+    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
+        pauseText = text(-0.01,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
+        pause(0.001);
+        delete(pauseText);
+    end
+        
     % PART 2: Let the user moves the handle to a target position ----------------------
     % (1) Preparation. Produce zero force.   
     trialFlag = 1; %a = []; 
@@ -235,7 +243,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     
     if (~isempty(trialData))
         % Plot this trajectory. Save trial data into a mega array;
-        h3 = plot(trialData(:,5), trialData(:,6), 'r.');
+        h3 = plot(trialData(:,5), trialData(:,6), 'w.');
         toSave = [toSave; trialData];
         trialData = double.empty();
     end
@@ -255,21 +263,24 @@ while (curTrial <= Ntrial) && (~bailOut)
     for j = 1:length(out4)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
+        plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'b.');
         pause(1/sample_freq);
         if (bailOut)
             break; % Shall bail out if we press any key!
         end
     end
 
-    % (6) Hold the handle position at the START, pause for 2 sec.
+    % (6) Hold the handle position at the START, pause for 3 sec (revised!)
     hold_pos(instance);
-    pause_me(2);
+    pause_me(3.0);
     fprintf('   6. Moving to NEXT TRIAL!\n');
     
     % (7) Clear the figure from old position data. First, obtain the handler to the
     % children part of the figure, then delete the components!
     try    
-        delete([h1,h2,h3]);
+        %delete([h1,h2,h3]);
+        mychild  = fig.Children.Children;
+        delete(mychild(1:length(mychild)-6));
     catch
     end
     % (8) Ready to continue to the next trial...
@@ -310,10 +321,17 @@ fprintf("\nReturning to Main Menu selection..........\n");
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
+%  To pause the game, you can press "Spacebar".
 function bailOut = KeyPressFcn(~,evnt)
-    global bailOut
+    global bailOut;  global pauseFlag;
     %fprintf('key event is: %s\n',evnt.Key);
     if(evnt.Key=="escape")
        bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
+    end
+    if(evnt.Key=="space")
+       pauseFlag = ~pauseFlag; 
+       if (pauseFlag), fprintf("Pausing the game now.....\n");
+       else, fprintf("Continuing the game now.....\n");
+       end
     end
 end

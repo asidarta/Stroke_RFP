@@ -8,8 +8,9 @@
 clear; clc; close all;
 
 s = settings;
-s.matlab.fonts.codefont.Size.TemporaryValue = 15; % points, make Matlab display font bigger!
+s.matlab.fonts.codefont.Size.TemporaryValue = 15; % points unit, make Matlab display font bigger!
 
+% Playing a 'Welcome' audio file.
 [mywav, Fs] = audioread('C:\Users\rris\Documents\MATLAB\Stroke_RFP\Audio\Opening.mp3');
 sound(mywav, Fs);
 
@@ -18,7 +19,7 @@ fprintf("     Welcome to Act.Sens Main User Interface! (ver. Feb 2021)       \n"
 fprintf("------------------------------------------------------------------\n\n");
 pause(3);
 
-
+% Keep looping until exit option is selected....
 while (1)
     fprintf("Choose one of the following: \n");
     fprintf("   (1) Motor assessment \n");

@@ -21,15 +21,16 @@ fprintf("Take note whether this client is a control group.... \n\n");
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 60;     % Total number of trials per block >>>
-hitScore  = 0;   % After each successfully hit the target add +10
-toshuffle = repmat(1:4,[1 Ntrial/4]);   % We have 4 target directions!!!
-eachTrial = Shuffle(toshuffle);
+Ntrial = 40;        % Total trials per block (Revised to 40, Mar-21)
+hitScore  = 0;      % After each successfully hit the target add +10
+toshuffle = repmat(1:4,[1 Ntrial/4]);      % We have 4 target directions!
+eachTrial = Shuffle(toshuffle);            % We shuffle the target position
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 trialData = double.empty();
-toSave = double.empty();  toSave2 = double.empty();
-lastXpos = instance.hman_data.location_X; 
-lastYpos = instance.hman_data.location_Y;
+toSave = double.empty();        % Initialize variable to save kinematic data
+toSave2 = double.empty();       % Initialize variable to save trial outcome
+lastXpos = instance.hman_data.location_X;  % To contain robot latest Xpos
+lastYpos = instance.hman_data.location_Y;  % To contain robot latest Ypos
 
 
 % Define different boolean flags, this depends on whether it's CONTROL group!?
@@ -45,12 +46,12 @@ else
 end
 
 % Sample frequency, timing parameters 
-sample_freq = 200;   % IMPORTANT that the sample freq remains the same!!!
+sample_freq = 200;    % Define so that sample freq remains the same!
 move_duration = 0.8;
 t = 0: 1/sample_freq : move_duration;
-curTrial = 1; 
-timerFlag = true;
-delay_at_target = 2;  % Hold at target position (in second)
+curTrial = 1;           % Initialize current trial=1
+timerFlag = true;       % Inttialize timerFlag to activate timer
+delay_at_target = 1.5;  % Hold at target position (in second)
 
 % Create a flag to denote which stages of the movement it is:
 %        0: hand still stationary at the start
@@ -79,17 +80,18 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 % Open an empty figure, remove the toolbar
 SetMouse(10,10);  % Put away mouse cursor
 % Call the function to prepare game display! Display background too...
-%imgNum = 1;                 % Added feature for displaying game theme!
-fig = game_interface(1,1,imgNum);
+fig = game_interface(1,1,imgNum);    % imgNum is taken from the user input above
 instantCursor = plot(0,0,'k.');  
 
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
 % Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut    
-bailOut = false;
+global bailOut;    
+global pauseFlag;   
+bailOut = false; pauseFlag = false;
 
-% Define the required audio file
+
+% Define the required audio file (not used!)
 [wav1, Fs] = audioread( strcat(myPath,'\Audio\assess.mp3') );
 
 % Text to be displayed as feedback
@@ -149,10 +151,12 @@ for curTrial = 1:Ntrial
         if(counter == 8)% && trialFlag == 1)
             delete(instantCursor);   % remove from the plot first, then redraw the cursor
             if (showCursor)
-                instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);   
+                %instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);
+                instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3);
             else
                 if (dist2Start < 0.02)
-                    instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);   
+                    %instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);
+                    instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3);
                 else   % remove the cursor if beyond a certain distance from the start
                     delete(instantCursor);
                 end
@@ -160,6 +164,12 @@ for curTrial = 1:Ntrial
             counter = 0;
         else
             counter = counter + 1;            
+        end
+        
+        while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
+            pauseText = text(-0.04,0.14,"Pausing...",'FontSize',55,'Color','w','FontWeight','bold');
+            pause(0.5);
+            delete(pauseText);
         end
         
         switch( trialFlag )
@@ -180,7 +190,7 @@ for curTrial = 1:Ntrial
         
             % Subject cannot be aimlessly reaching forever
             if (dist2Start < 0.10) 
-                if (toc > 6.0)   % this is 6 seconds timeout!!!
+                if (toc > 5.0)   % this is 5 seconds timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
                     text(-0.03,0.16,txt4,'FontSize',50,'Color','r','FontWeight','bold');
@@ -193,14 +203,12 @@ for curTrial = 1:Ntrial
                     tic;     % Start timer
                 end
                 % If the cursor is close enough to the TARGET, check if the movement 
-                % is SLOW enough, almost stopping. Then prepare to STOP for 2 seconds.
-                if (speed < 10)
-                    timerFlag = false;   % Update flag to allow tic again
-                else
-                    timerFlag = true;    % Update flag to allow tic again
+                % is SLOW enough, almost stopping. Then prepare to HOLD for 1.5 seconds.
+                if (speed < 10),    timerFlag = false;   % Update flag to allow tic again
+                else,     timerFlag = true;    % Update flag to allow tic again
                 end                
                 if (toc > delay_at_target)
-                    % After 2 seconds stop, ready to move to the next stage 
+                    % After 1.5 seconds hold, ready to move to the next stage 
                     trialFlag = 2;
                     % Update flag to allow new 'tic'
                     timerFlag = true;   
@@ -221,7 +229,7 @@ for curTrial = 1:Ntrial
                 fprintf('   Distance: %.2f cm, and lateral error: %.2f cm\n', dist2Target*100, t_pd_target*100);
 
                 % Check criteria for reward: distance from target and ABS lateral error shd be within the target size
-                if (dist2Target < targetSize/1000 && abs(t_pd_target) < targetSize/900)   % updated, take absolute!
+                if (dist2Target < targetSize/1000 && abs(t_pd_target) < targetSize/750)   % updated, take absolute!
                     fprintf('   Target hit. Well done!\n');             
                     hitFlag = true;  hitCol = 'green';
                 else
@@ -252,7 +260,7 @@ for curTrial = 1:Ntrial
                     
                     % This trajectory feedback will always for rewarded/unrewarded trials.
                     % Draw movement trajectory just made together with ideal straight line.
-                    mycursor = plot(myXpos,myYpos,'w.','MarkerSize',60); 
+                    mycursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3); 
                     mytraj  = plot( thePoints(:,1),thePoints(:,2),hitCol,'LineWidth',4 );
                     refline = line([0,targetCtr(m,1)],[0,targetCtr(m,2)],'Color','w','LineWidth',2); 
                     pause_me(delay_at_target);
@@ -397,10 +405,17 @@ fprintf("\nReturning to Main Menu selection..........\n");
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
+%  To pause the game, you can press "Spacebar".
 function bailOut = KeyPressFcn(~,evnt)
-    global bailOut
+    global bailOut; global pauseFlag;
     %fprintf('key event is: %s\n',evnt.Key);
     if(evnt.Key=="escape") 
        bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
+    end
+    if(evnt.Key=="space")
+       pauseFlag = ~pauseFlag; 
+       if (pauseFlag), fprintf("Pausing the game now.....\n");
+       else, fprintf("Continuing the game now.....\n");
+       end
     end
 end

@@ -41,7 +41,8 @@ ax.set('YDir','normal');                   % hack to flip plot elements after im
 axis([-0.2,0.2,-0.014,0.186]);             % axis limits, adjusted to LCD aspect ratio
 daspect([1 1 1]);                          % maintaining aspect ratio
 
-% (3) Load and place background image on the plot!
+% (3) Load and place background image on the plot! There are up to 6 game themes so that
+% subjects won't feel bored seeing the same game interface.
 figure(xxx);
 myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';  % working directory!
 myPath = strcat(myPath,num2str(imgNum),'\');
