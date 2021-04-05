@@ -6,9 +6,9 @@ function myOutput = plot_image(imgNum, ind, xpos, ypos, imgSize)
 % Output = handler to the image 
 
 imgSize = imgSize/1000;     % adjusting the unit (mm -> metre)
-
-myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';  % working directory!
-myPath = strcat(myPath, num2str(imgNum), '\');
+global myPath;
+%myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';  % working directory!
+localpath = strcat(myPath, '\Images\', num2str(imgNum), '\');
 
 switch( ind )   % image index
     case 1 
@@ -41,7 +41,7 @@ switch( ind )   % image index
 end
 
 % Load the image file first......
-[img, map, alphachannel] = imread( strcat(myPath,myImage) );
+[img, map, alphachannel] = imread( strcat(localpath,myImage) );
 %image(img, 'AlphaData', alphachannel);
 
 
@@ -49,3 +49,4 @@ end
 myOutput = image(flipud(img), 'XData', [xpos-imgSize xpos+imgSize], ...
                               'YData', [ypos-imgSize ypos+imgSize], ...
                               'AlphaData', flipud(alphachannel));
+                          

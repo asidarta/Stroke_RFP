@@ -14,44 +14,38 @@ fprintf("Take note whether this client is a control group.... \n\n");
 % Obtain the instance handler, stiffness, and damping parameters.
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
-% (0) Produce filename for the current trial based on user-defined information
-%     imgNum refers to block number per session...
-[subjID, session, imgNum, myresultfile] = collectInfo( "train" );   
-%targetSize = input('\nEnter target size: ');
+% (0) Produce filename for the current trial based on user-defined information imgNum 
+% refers to block number; now using GUI! (4 Apr 2021).
+guiOut = gui( "train" );
+subjID = guiOut.subject;  myresultfile = guiOut.filename;  
+control= guiOut.control;  practice = guiOut.practice;
+session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
+pause(1.0)
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 40;        % Total trials per block (Revised to 40, Mar-21)
+Ntrial = 20;        % Total trials per block (Revised again, 26 March 2021)
 hitScore  = 0;      % After each successfully hit the target add +10
 toshuffle = repmat(1:4,[1 Ntrial/4]);      % We have 4 target directions!
 eachTrial = Shuffle(toshuffle);            % We shuffle the target position
-myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
 trialData = double.empty();
-toSave = double.empty();        % Initialize variable to save kinematic data
-toSave2 = double.empty();       % Initialize variable to save trial outcome
+toSave = double.empty();                   % Initialize variable to save kinematic data
+toSave2 = double.empty();                  % Initialize variable to save trial outcome
 lastXpos = instance.hman_data.location_X;  % To contain robot latest Xpos
 lastYpos = instance.hman_data.location_Y;  % To contain robot latest Ypos
-
+global myPath;
 
 % Define different boolean flags, this depends on whether it's CONTROL group!?
-control = input('Is this control group? (y/n) ','s');
-if (control=='y')
-    showCursor = true;   % to show the mouse cursor during movement?
-    showReward = true;   % to show the score with feedback?
-    subjID = strcat(subjID,'_ctrl');
-else
-    showCursor = false;  % to show the mouse cursor during movement?
-    showReward = true;   % to show the score with feedback?
-    subjID = strcat(subjID,'_exper');
-end
+showCursor = control;   % to show the mouse cursor during movement?
+showReward = true;      % to show the score with feedback?
 
 % Sample frequency, timing parameters 
-sample_freq = 200;    % Define so that sample freq remains the same!
-move_duration = 0.8;
+sample_freq = 200;      % Define so that sample freq remains the same!
+move_duration = 0.8;    % Predefined movement duration;
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1;           % Initialize current trial=1
 timerFlag = true;       % Inttialize timerFlag to activate timer
-delay_at_target = 1.5;  % Hold at target position (in second)
+delay_at_target = 0.5;  % Hold at target position (in second)
 
 % Create a flag to denote which stages of the movement it is:
 %        0: hand still stationary at the start
@@ -62,11 +56,8 @@ delay_at_target = 1.5;  % Hold at target position (in second)
 trialFlag = 0;
 hold_pos(instance);  % >>>>>>>>>
 
-% Define the SIZE of the target. If empty, use Default = 20.
-%if (isempty(targetSize))
-    % >>> target size will be smaller for subsequent session!
-    targetSize = 20 - floor((session-1)/2)           
-%end
+% Define the SIZE of the target. If empty, use Default = 16! --------------
+targetSize = 16;% - floor((session-1)/2)           
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
@@ -86,9 +77,9 @@ instantCursor = plot(0,0,'k.');
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
 % Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut;    
-global pauseFlag;   
-bailOut = false; pauseFlag = false;
+global bailOut;  bailOut = false;   
+% Pause by default to allow final check before the trial
+global pauseFlag;   pauseFlag = true;
 
 
 % Define the required audio file (not used!)
@@ -98,12 +89,17 @@ bailOut = false; pauseFlag = false;
 txt1 = 'Next trial ~';
 txt2 = 'Good job!!';
 txt3 = 'Current score:';
-txt4 = 'Try again...';
+txt4 = 'Do not give up!';
+
+fprintf('\nPress <Spacebar> to continue ..........\n');
+while pauseFlag     % There will be Pause to ensure subjects are ready
+    pauseText = text(-0.055,0.14,"Ready to play?",'FontSize',55,'Color','w','FontWeight','bold');
+    pause(0.5);   delete(pauseText);
+end
 
 
 
 %% Main loop: looping through ALL trials! ----------------------------------
-pause_me(2.0);  
 for curTrial = 1:Ntrial
 
     % Preparting current target position, then plot the target location.
@@ -118,16 +114,11 @@ for curTrial = 1:Ntrial
     counter   = 0;      % Will be used for displaying cursor purposes
     
     % Plot the TARGET POSITION so as to show the subjects
-    pause_me(1.5);
+    pause_me(2*delay_at_target);
     %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
     plot_image( imgNum, m, targetCtr(m,1), targetCtr(m,2), targetSize );    
-    pause_me(1.5);
-
-    % Play BEEP tone and disply MOVE cue for 1.5 second!!
-    goCue = plot_image([], 10, 0, 0.1, 30);
-    play_tone(1250, 0.15);
-    pause_me(1.25);
-    delete(goCue);  % delete from the plot after a sufficient time
+    %pause_me(delay_at_target);
+    play_tone(4000, 0.01);
     
     % While the handle is free and subject is actively moving by himself...
     while (~bailOut && ~nextTrial)
@@ -168,8 +159,7 @@ for curTrial = 1:Ntrial
         
         while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
             pauseText = text(-0.04,0.14,"Pausing...",'FontSize',55,'Color','w','FontWeight','bold');
-            pause(0.5);
-            delete(pauseText);
+            pause(0.5);  delete(pauseText);
         end
         
         switch( trialFlag )
@@ -181,19 +171,19 @@ for curTrial = 1:Ntrial
             end
 
             % NEW: Virtual channel based on target angle, current handle position, ch size!
-            if (control=='n')  % this feedback is not for control group!
+            if (~control)  % this feedback is not for control group!
                 channel(ang(m), [myXpos,myYpos], instance, 5);
             end
             
             % Record mouse position in in an array
             thePoints = [thePoints; myXpos myYpos];          
         
-            % Subject cannot be aimlessly reaching forever
-            if (dist2Start < 0.10) 
-                if (toc > 5.0)   % this is 5 seconds timeout!!!
+            % If subject is too weak, still < 7.5cm from the start, we have to give timeout!
+            if (dist2Start < 0.075) 
+                if (toc > 4.0)   % this is 4 seconds timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
-                    text(-0.03,0.16,txt4,'FontSize',50,'Color','r','FontWeight','bold');
+                    text(-0.04,0.16,txt4,'FontSize',52,'Color','r','FontWeight','bold');
                     fprintf("   Timeout. Failed to reach to this direction!\n");
                 end
             % Note: ensure that subject is able to move beyond a distance > 0.10 m.
@@ -208,7 +198,7 @@ for curTrial = 1:Ntrial
                 else,     timerFlag = true;    % Update flag to allow tic again
                 end                
                 if (toc > delay_at_target)
-                    % After 1.5 seconds hold, ready to move to the next stage 
+                    % After hold time, ready to move to the next stage 
                     trialFlag = 2;
                     % Update flag to allow new 'tic'
                     timerFlag = true;   
@@ -253,7 +243,7 @@ for curTrial = 1:Ntrial
                         hitScore = hitScore + 10;     % Increase hit score
                         txt2  = play_KR(myPath);
                         mymsg = [txt2, newline, txt3, ' ', int2str(hitScore)];
-                        text(-0.05,0.175,mymsg,'FontSize',45,'Color',hitCol,'FontWeight','bold');
+                        text(-0.055,0.175,mymsg,'FontSize',45,'Color',hitCol,'FontWeight','bold');
                     else
                         text(-0.04,0.18,' ');   % If fails: no need negative feedback!
                     end
@@ -263,7 +253,7 @@ for curTrial = 1:Ntrial
                     mycursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3); 
                     mytraj  = plot( thePoints(:,1),thePoints(:,2),hitCol,'LineWidth',4 );
                     refline = line([0,targetCtr(m,1)],[0,targetCtr(m,2)],'Color','w','LineWidth',2); 
-                    pause_me(delay_at_target);
+                    pause_me(2.5);  % Show the feedback for 2.5 sec!!
                     delete(mycursor);
                 end
             end
@@ -306,8 +296,8 @@ for curTrial = 1:Ntrial
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
             end        
-            % Hold for 2 seconds at the Start position, then move to next trial
-            if (toc > delay_at_target)
+            % Hold for 500msec at the Start position, then move to next trial
+            if (toc > 0.5)
                 fprintf('   Ready for the next trial~\n');
                 % Update flag so as to allow 'tic'
                 timerFlag = true;
@@ -361,32 +351,30 @@ for curTrial = 1:Ntrial
     delete(mychild(1:length(mychild)-2));
 
     % CONTINUE TO THE NEXT TRIAL.....
-    t1 = text(-0.04,0.16,txt1,'FontSize',55,'FontWeight','bold','Color','w');
-    pause(0.01); 
     curTrial = curTrial + 1; 
-    pause_me(delay_at_target);     % Let's pause for a while...
-    delete(t1);                    % then remove the text from the screen
     
-    if (bailOut)
+    if (bailOut) 
         break; % Shall bail out if we press any key!
     end
    
 end
 
-%% Saving trajectory and trial-outcome data as tables with headers!
-varNames = {'trial','flag','m','angle','posX','posY','velX','velY','hit','score','elapsed','emerg','force'};
-writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
-            strcat(myPath, 'Trial Data\',myresultfile,'.csv'));  
-varNames = {'curTrial','dist2Target','t_meanpd_target','t_area_target','t_pd_target','t_pdmaxv_target', ...
-            't_pd200_target','stpx','stpy','PeakVel','targetSize','hitFlag'};
-writetable( array2table(toSave2,'VariableNames',varNames), ... % Trial result data
-            strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'));         
-
+%% Saving trajectory and trial-outcome data as tables with headers! 
+% Save only when this is not Practice, and when the data content is not empty.
+if (~practice && ~isempty(toSave) && ~isempty(toSave2))
+    varNames = {'trial','flag','m','angle','posX','posY','velX','velY','hit','score','elapsed','emerg','force'};
+    writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
+                strcat(myPath, '\Trial Data\',myresultfile,'.csv'));  
+    varNames = {'curTrial','dist2Target','t_meanpd_target','t_area_target','t_pd_target','t_pdmaxv_target', ...
+                't_pd200_target','stpx','stpy','PeakVel','targetSize','hitFlag'};
+    writetable( array2table(toSave2,'VariableNames',varNames), ... % Trial result data
+                strcat(myPath, '\Trial Data\',myresultfile,'_results.csv'));         
+end
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
 
-% Stop TCP connection 
+% Stop TCP connection every time the session ends 
 instance.CloseConnection();
 fprintf("\nClosing connection to H-man................\n");
 
@@ -397,6 +385,7 @@ sound(mywav, Fs);
 fprintf('\nTraining program has finished, bye!!\n');
 pause(1.0)
 close all; clc; % Wait to return to MainMenu?
+
 
 %% Compute average kinematic error
 %estimateSize(toSave2)

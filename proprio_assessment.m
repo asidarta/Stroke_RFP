@@ -14,20 +14,25 @@ fprintf("\n--------   Joint Position Matching   --------\n");
 % Obtain the instance handler, stiffness, and damping parameters.
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
-% (0) Produce filename for the current trial based on user-defined information
-[subjID, ~, ~, myresultfile] = collectInfo( "somato_jpm" );
+% (0) Produce filename for the current trial based on user-defined information imgNum 
+% refers to block number; now using GUI! (4 Apr 2021).
+guiOut = gui( "soma_jpm" );
+subjID = guiOut.subject;  myresultfile = guiOut.filename;  
+control= guiOut.control;  practice = guiOut.practice;
+session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
+pause(1.0)
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 20;    % Total number of trials per block
-toshuffle = repmat(1:4,[1 Ntrial/4]);    % We have 4 target directions!!
-eachTrial = Shuffle(toshuffle);          % We shuffle the target position
-myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
+Ntrial = 20;        % Total number of trials per block
+toshuffle = repmat(1:4,[1 Ntrial/4]);      % We have 4 target directions!!
+eachTrial = Shuffle(toshuffle);            % We shuffle the target position
 trialData = double.empty();
-toSave = double.empty();      % Initialize variable to save kinematic data
+toSave = double.empty();                   % Initialize variable to save kinematic data
 lastXpos = instance.hman_data.location_X;  % To contain robot latest Xpos
 lastYpos = instance.hman_data.location_Y;  % To contain robot latest Ypos
 k_asst = 250;   % max Stiffness value (N/m) for assistive mode
+global myPath;
 
 % Create a flag to denote which stages of the movement it is:
 %        5: robot moves to a target (reference traj)
@@ -38,11 +43,11 @@ trialFlag = 1;
 
 % Sample frequency, timing parameters ------------------------------------
 sample_freq = 200;      % Define so that sample freq remains the same!
-move_duration = 1.0;    % estimated to be 2 sec movement!
+move_duration = 1.0;    % estimated to be 1 sec movement!
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1;           % Initialize current trial=1
 timerFlag = true;       % Inttialize timerFlag to activate timer
-delay_at_target = 1.0;  % Hold at target position (sec)
+delay_at_target = 2.0;  % Hold at target position (2-sec)
 
 
 %% GAMING DISPLAY: Plot the X,Y data --------------------------------------
@@ -53,9 +58,9 @@ fig = game_interface(1,0,0);
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
 % Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut;
-global pauseFlag;
-bailOut = false;  pauseFlag = false;
+global bailOut;  bailOut = false;   
+% Pause by default to allow final check before the trial
+global pauseFlag;   pauseFlag = true;
 
 % Create circular target traces. Here, I define four target locations for reaching.
 targetDist = 0.15;
@@ -73,14 +78,25 @@ targetCtr  = targetDist* [ [cosd(30); cosd(60); cosd(120); cosd(150)], ...
                            [sind(30); sind(60); sind(120); sind(150)] ] ;
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
+
 % Define the required audio file: Ask subjects to stay relaxed!
 [eyes_wav, Fs] = audioread( strcat(myPath,'\Audio\close_eyes.mp3') );
-pause(2.0); sound(eyes_wav, Fs);
-text(-0.07,0.16,'Eyes closed and always relax!','FontSize',35,'FontWeight','bold','Color','g');
+sound(eyes_wav, Fs);
+text(-0.075,0.16,'Eyes closed and always relax!','FontSize',38,'FontWeight','bold','Color','g');
+
+% Reading audio file for reference movement
+[ref, Fs]   = audioread( strcat(myPath,'\Audio\reference.mp3') );
+[match, Fs] = audioread( strcat(myPath,'\Audio\matching.mp3') );
+
+fprintf('\nPress <Spacebar> to continue ..........\n');
+while pauseFlag     % There will be Pause to ensure subjects are ready
+    pauseText = text(-0.055,0.14,"Ready to play?",'FontSize',55,'Color','w','FontWeight','bold');
+    pause(0.5);   delete(pauseText);
+end
+
 
 
 %% TRIAL LOOP = Keep looping until Ntrial is met OR a key is pressed
-pause_me(2.0)
 while (curTrial <= Ntrial) && (~bailOut)
     
     m = eachTrial(curTrial);  
@@ -100,6 +116,9 @@ while (curTrial <= Ntrial) && (~bailOut)
     fprintf('   1. Producing reference trajectory.\n');
     % Convert position into string for robot command
     Xpos = num2str(out(:,1)); Ypos = num2str(out(:,2));
+    
+    sound(ref, Fs);     
+    %pause_me(delay_at_target); 
 
     % (4a) Move handle to target!
     trialFlag = 5;
@@ -125,7 +144,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     end
     
     % Pause for 2 seconds at the target location
-    pause_me(2*delay_at_target);   
+    pause_me(delay_at_target);   
 
     % (5) Create minimum jerk trajectory back to START position
     out2 = min_jerk([end_X end_Y 0], [start_X start_Y 0], t);
@@ -163,7 +182,6 @@ while (curTrial <= Ntrial) && (~bailOut)
     goCue = plot_image([], 10, 0, 0.1, 20);
     play_tone(1250, 0.16);
     pause_me(delay_at_target);
-    pause_me(delay_at_target);  
     
     while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
         pauseText = text(-0.01,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
@@ -236,7 +254,7 @@ while (curTrial <= Ntrial) && (~bailOut)
             end
         end
               
-        lastXpos = instance.hman_data.location_X; lastYpos = instance.hman_data.location_Y;
+        lastXpos = instance.hman_data.location_X;  lastYpos = instance.hman_data.location_Y;
         j=j+1; % loop counter
         
     end
@@ -272,7 +290,7 @@ while (curTrial <= Ntrial) && (~bailOut)
 
     % (6) Hold the handle position at the START, pause for 3 sec (revised!)
     hold_pos(instance);
-    pause_me(3.0);
+    pause_me(delay_at_target);
     fprintf('   6. Moving to NEXT TRIAL!\n');
     
     % (7) Clear the figure from old position data. First, obtain the handler to the
@@ -299,10 +317,11 @@ end
         %    col-7,8 : handle X,Y velocity
         %    col-9   : Emergency button state
         %    col-10  : force value
-varNames = {'trial','flag','m','angle','posX','posY','velX','velY','emerg','force'};
-writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
+if (~practice && ~isempty(toSave))
+    varNames = {'trial','flag','m','angle','posX','posY','velX','velY','emerg','force'};
+    writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
             strcat(myPath, 'Trial Data\',myresultfile,'.csv'));          
-        
+end        
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
 

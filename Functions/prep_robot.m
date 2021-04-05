@@ -6,7 +6,7 @@ function [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot()
    % it is the place to define robot instances, stiffness, and damping.
 
 
-%% Load the DLL files
+%% Load the DLL files. Important to ensure that the library path is correct....
 my_pwd = 'C:\Users\rris\Documents\MATLAB\Control library\V2\';
 Articares = NET.addAssembly(strcat(my_pwd,'\Articares.Core.dll'));
 Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));

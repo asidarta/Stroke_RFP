@@ -44,11 +44,12 @@ daspect([1 1 1]);                          % maintaining aspect ratio
 % (3) Load and place background image on the plot! There are up to 6 game themes so that
 % subjects won't feel bored seeing the same game interface.
 figure(xxx);
-myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';  % working directory!
-myPath = strcat(myPath,num2str(imgNum),'\');
+global myPath;
+%myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\Images\';  % working directory!
+localpath = strcat(myPath,'\Images\',num2str(imgNum),'\');
 
 if (flag)
-    bg = imread( strcat(myPath,'\background.png') );
+    bg = imread( strcat(localpath,'\background.png') );
     image(flipud(bg),'XData',[-0.2 0.2],'YData',[-0.01 0.2]);
 
     % (4) Create circular trace for the START position
@@ -56,15 +57,17 @@ if (flag)
     plot( c(1,:),c(2,:), 'LineWidth',5 ); 
        
     % (5) This is for the background music. Ensure this window is minimized not to distract
+    warning('off');   % Suppress warning?!
     soundfig = figure(3);  
     soundfig.WindowState = 'minimized';
     actx = actxcontrol('WMPlayer.ocx.7'); % Create controller
-    media = actx.newMedia(strcat(myPath,'\music.mp3')); % Create media object
+    media = actx.newMedia(strcat(localpath,'\music.mp3')); % Create media object
     actx.CurrentMedia = media;
     actx.settings.playCount = 999; % Play the media 999 times
     % actx.Controls.play;
     % To hide the fig, in this case music won't stop without closing this figure
-    soundfig.set('DefaultFigureVisible','on'); 
+    soundfig.set('DefaultFigureVisible','on');
+    warning('on')
 end
 
 disp('Preparing gaming interface on the screen...');

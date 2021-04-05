@@ -14,21 +14,26 @@ fprintf("\n--------  Warming up (Preparation)   --------\n");
 % Obtain the instance handler, stiffness, and damping parameters.
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
-% (0) Produce filename for the current trial based on user-defined information
-[subjID, session, imgNum, myresultfile] = collectInfo( "warmup" );
+% (0) Produce filename for the current trial based on user-defined information imgNum 
+% refers to block number; now using GUI! (4 Apr 2021).
+guiOut = gui( "warmup" );
+subjID = guiOut.subject;  myresultfile = guiOut.filename;  
+control= guiOut.control;  practice = guiOut.practice;
+session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
+pause(1.0)
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 16;      % The number of trials per block for Part-2
-hitScore  = 0;    % Add +10 for each success
-toshuffle = repmat(1:4,[1 Ntrial/4]);    % We have 4 target directions!
-eachTrial = Shuffle(toshuffle);          % We shuffle the target location
-myPath = 'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
+Ntrial = 16;        % The number of trials per block for Part-2
+hitScore  = 0;      % Add +10 for each success
+toshuffle = repmat(1:4,[1 Ntrial/4]);      % We have 4 target directions!
+eachTrial = Shuffle(toshuffle);            % We shuffle the target location
 trialData = double.empty();
-toSave   = double.empty();      % Initialize variable to save kinematic data  
-toSave2  = double.empty();      % Initialize variable to save trial outcome
+toSave   = double.empty();                 % Initialize variable to save kinematic data  
+toSave2  = double.empty();                 % Initialize variable to save trial outcome
 lastXpos = instance.hman_data.location_X;  % To contain robot latest Xpos 
 lastYpos = instance.hman_data.location_Y;  % To contain robot latest Ypos
+global myPath;
 
 % Sample frequency, timing parameters 
 sample_freq = 200;   % IMPORTANT that the sample freq remains the same!!!
@@ -36,7 +41,7 @@ move_duration = 0.8;
 t = 0: 1/sample_freq : move_duration;
 curTrial = 1;         % Initialize current trial=1
 timerFlag = true;     % Initialize the timer flag
-delay_at_target = 1;  % Hold at target position (sec)
+delay_at_target = 0.5;  % Hold at target position (sec)
 
 % Create a flag to denote which stages of the movement it is:
 %        0: hand still stationary at the start
@@ -71,11 +76,13 @@ hand  = imread( strcat(myPath,'\Images\hand.png') );   % Cursor is shown as a ha
 % Define keyboard press function associated with the window!
 set(fig,'WindowKeyPressFcn',@KeyPressFcn);
 % Define global variable as a flag to quit the main loop upon a keypress.
-global bailOut ;
-global pauseFlag;
-bailOut = false;  pauseFlag = false;
+global bailOut;  bailOut = false;   
+% Pause by default to allow final check before the trial
+global pauseFlag;   pauseFlag = true;
+
 
 % Define the required audio file for background music
+warning('off');   % Suppress warning?!
 soundfig = figure(3);  soundfig.WindowState = 'minimized';
 actx = actxcontrol('WMPlayer.ocx.7'); % Create controller
 media = actx.newMedia(strcat(myPath,'\Audio\food.mp3')); % Create media object
@@ -95,13 +102,7 @@ soundfig.set('DefaultFigureVisible','on');
 fprintf('\nPART 1: Press ESCAPE  key to proceed to next stage........\n');
 message = 'Pick the food!';
 mytext  = text(-0.04,0.186,message,'FontSize',47,'Color','w');
-pause_me(2.0);  
-
-% Play BEEP tone and disply MOVE cue for 1.5 sec!!
-goCue = plot_image([], 10, 0, 0.12, 40);
-play_tone(1250, 0.15);
-pause_me(1.25);  h = 0;
-delete(goCue);  % delete from the plot after a sufficient time
+pause_me(1.0);  
 
 while (1)
     % Obtain H-MAN handle position in real-time and plot it. Convert to mm unit!
@@ -126,10 +127,12 @@ while (1)
     end
 end
 
-% Save the data to check the Range of Motion!
-varNames = {'posX','posY','velX','velY'};
-writetable( array2table(trialData,'VariableNames',varNames), strcat(myPath, 'Trial Data\',myresultfile,'_ROM.csv'));
-fprintf('\nSaving data for Part-1 warm up........\n');
+% Save the data to check the Range of Motion! Save only when it's not practice!
+if (~practice && ~isempty(trialData))
+    varNames = {'posX','posY','velX','velY'};
+    writetable( array2table(trialData,'VariableNames',varNames), strcat(myPath, 'Trial Data\',myresultfile,'_ROM.csv'));
+    fprintf('\nSaving data for Part-1 warm up........\n');
+end
 
 % Done with exercise. Remove all previous images.
 mychild = fig.Children.Children;
@@ -178,14 +181,7 @@ for curTrial = 1:Ntrial
     counter   = 0;      % Will be used for displaying cursor purposes
     
     % Plot the TARGET POSITION so as to show the subjects
-    plot_image( [], m+20, targetCtr(m,1), targetCtr(m,2), targetSize );    
-    pause_me(2.0);
-    
-    % Play BEEP tone and disply MOVE cue for 1.5 sec!!
-    goCue = plot_image([], 10, 0, 0.156, 27);
-    play_tone(1250, 0.15);
-    pause_me(1.25);
-    delete(goCue);  % delete from the plot after a sufficient time
+    plot_image( [], m+20, targetCtr(m,1), targetCtr(m,2), targetSize );  pause_me(1.0);
     
     % While the handle is free and subject starts moving by himself. (Updated Mar/21, bug fixed for bailout)
     while (~bailOut && ~nextTrial)
@@ -226,16 +222,16 @@ for curTrial = 1:Ntrial
             % Important! Now set resistive force, preventing it from leaving the START  >>>>>>>>>>
             instance.SetTarget('0','0','200','200','0','0','0','0','0','0','1','0');
             if (aimless_)
+                t2 = text(-0.095,0.15,'Hit the food. Feel the resistant!','FontSize',50,'FontWeight','bold','Color','w');
                 aimless_ = false; 
                 tic;   % Start timer!
-                t2 = text(-0.09,0.15,'Hit the centre. Stay there!','FontSize',50,'FontWeight','bold','Color','w');
             end       
-            % Subject cannot be aimlessly reaching forever. Put 7 cm reaching distance as the threshold.
-            if (dist2Start < 0.1) 
-                if (toc > 5.0)   % this is 5-sec timeout!!!
+            % Subject cannot be aimlessly reaching forever, we set a timeout.
+            if (dist2Start < 0.06) 
+                if (toc > 4.0)   % this is 4-sec timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
-                    text(-0.03,0.165,'Try again...','FontSize',54,'Color','r','FontWeight','bold');
+                    text(-0.04,0.165,'Do not give up!','FontSize',54,'Color','r','FontWeight','bold');
                     fprintf("   Timeout. Failed to reach to this direction!\n");
                 end
             % Note: ensure that subject is able to move beyond a distance > 0.10 m.
@@ -266,7 +262,7 @@ for curTrial = 1:Ntrial
             if (timerFlag)
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
-                delete(t2);      % then remove the text from the screen
+                delete(t2);          % then remove the text from the screen
                 % Updated: compute trial-related KINEMATIC performance measures
                 [ t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,t_pd200_target,...
                         stpx, stpy, PeakVel ] =  get_Kinematic( trialData, targetCtr(m,:), sample_freq );
@@ -310,8 +306,8 @@ for curTrial = 1:Ntrial
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
             end        
-            % Hold for 1.5 second at the Start position, then move to next trial
-            if (toc > 1.5)
+            % Hold for 500msec at the Start position, then move to next trial
+            if (toc > 0.5)
                 fprintf('   Ready for the next trial~\n');
                 % Update flag so as to allow 'tic'
                 timerFlag = true;
@@ -364,33 +360,30 @@ for curTrial = 1:Ntrial
     delete(mychild);
 
     % CONTINUE TO THE NEXT TRIAL.....
-    t1 = text(-0.04,0.16,'Next trial~','FontSize',55,'FontWeight','bold','Color','w');
-    pause(0.1); 
+    %pause(0.1); 
     curTrial = curTrial + 1; 
-    pause_me(1.5*delay_at_target);     % Let's pause for a while...
-    delete(t1);      % then remove the text from the screen
 
-    if (bailOut)
-        break; % Shall bail out if we press any key!
+    if (bailOut);  break; % Shall bail out if we press any key!
     end
 
 end
 
 
-%% Saving trial data.........
-dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_Resist.csv'), toSave);
-%dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
+%% Saving trial data. Do this when it's not for practice
+if (~practice && ~isempty(toSave))
+    dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_Resist.csv'), toSave);
+    %dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
+end
 
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
 
-% Stop TCP connection 
+% Stop TCP connection every time the session ends 
 instance.CloseConnection();
 
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
 fprintf('\nWarming up finished, bye!!\n');
-pause(2.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection........\n");
 

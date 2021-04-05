@@ -10,14 +10,22 @@ clear; clc; close all;
 s = settings;
 s.matlab.fonts.codefont.Size.TemporaryValue = 15; % points unit, make Matlab display font bigger!
 
+% NOTE: I declare the working directory as global here so other codes can
+% access it without redefining it locally.
+global myPath 
+myPath = strcat(pwd, '\');  %'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
+
+global subjID;
+subjID = 'S01';
+
 % Playing a 'Welcome' audio file.
-[mywav, Fs] = audioread('C:\Users\rris\Documents\MATLAB\Stroke_RFP\Audio\Opening.mp3');
+[mywav, Fs] = audioread(strcat(myPath,'\Audio\Opening.mp3'));
 sound(mywav, Fs);
 
 fprintf("\n------------------------------------------------------------------\n");
 fprintf("     Welcome to Act.Sens Main User Interface! (ver. Feb 2021)       \n");
 fprintf("------------------------------------------------------------------\n\n");
-pause(3);
+pause(1.5);
 
 % Keep looping until exit option is selected....
 while (1)
