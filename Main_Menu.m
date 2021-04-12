@@ -2,7 +2,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %------   Note: This is the MAIN INTERFACE to run many different   ------
-%------   robotic tasks in H-man.  (Ananda, Feb 2021)              ------
+%------   robotic tasks in H-man.   (Revised by Ananda, Apr 2021)  ------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clear; clc; close all;
@@ -14,9 +14,6 @@ s.matlab.fonts.codefont.Size.TemporaryValue = 15; % points unit, make Matlab dis
 % access it without redefining it locally.
 global myPath 
 myPath = strcat(pwd, '\');  %'C:\Users\rris\Documents\MATLAB\Stroke_RFP\';
-
-global subjID;
-subjID = 'S01';
 
 % Playing a 'Welcome' audio file.
 [mywav, Fs] = audioread(strcat(myPath,'\Audio\Opening.mp3'));
@@ -52,11 +49,13 @@ while (1)
             run('motor_task_2.m')
         case '6'
             run('passive_task.m')
-        otherwise
+        case '7'
             fprintf("\nClosing Matlab now. You may now shut down the computer, and")
             fprintf("\nturn off the wireless keyboard and mouse.\n");
             pause(5);
             quit
+        otherwise
+            fprintf("\nWrong selection. Try again.\n\n");
     end
 end
 

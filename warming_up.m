@@ -9,25 +9,26 @@ clc;
 clear; close all;
 fprintf("\n--------  Warming up (Preparation)   --------\n");
 
-
-%% First, establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
-
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
-guiOut = gui( "warmup" );
+guiOut = gui( 'warmup' );
+save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
 session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
-pause(1.0)
+
+
+%% Then, establish connection with H-MAN!
+% Obtain the instance handler, stiffness, and damping parameters.
+[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 
 %% Trial-related parameters -----------------------------------------------
 Ntrial = 16;        % The number of trials per block for Part-2
 hitScore  = 0;      % Add +10 for each success
 toshuffle = repmat(1:4,[1 Ntrial/4]);      % We have 4 target directions!
-eachTrial = Shuffle(toshuffle);            % We shuffle the target location
+%eachTrial = Shuffle(toshuffle);           % We shuffle the target position
+eachTrial = sort(toshuffle);               % We shuffle the target position
 trialData = double.empty();
 toSave   = double.empty();                 % Initialize variable to save kinematic data  
 toSave2  = double.empty();                 % Initialize variable to save trial outcome
@@ -56,7 +57,7 @@ targetSize = 30;  % >>>>>>>>>>>>>>
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
-targetDist = 0.11;   % >>>>>>>> This is shorter than usual reaching distance!
+targetDist = 0.12;   % >>>>>>>> This is shorter than usual reaching distance!
 targetCtr  = targetDist* [ [cosd(30); cosd(60); cosd(120); cosd(150)], ... 
                            [sind(30); sind(60); sind(120); sind(150)] ] ;
 ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
@@ -211,7 +212,7 @@ for curTrial = 1:Ntrial
         end
         
         while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
-            pauseText = text(-0.04,0.17,"Pausing....",'FontSize',55,'Color','w','FontWeight','bold');
+            pauseText = text(-0.04,0.17,"Ready to play?",'FontSize',55,'Color','w','FontWeight','bold');
             pause(0.5);
             delete(pauseText);
         end
@@ -220,9 +221,9 @@ for curTrial = 1:Ntrial
         % STAGE-1 : Moving towards the target (press any key to exit)
         case 1            
             % Important! Now set resistive force, preventing it from leaving the START  >>>>>>>>>>
-            instance.SetTarget('0','0','200','200','0','0','0','0','0','0','1','0');
+            instance.SetTarget('0','0','180','180','0','0','0','0','0','0','1','0');
             if (aimless_)
-                t2 = text(-0.095,0.15,'Hit the food. Feel the resistant!','FontSize',50,'FontWeight','bold','Color','w');
+                t2 = text(-0.095,0.155,'Hit the food. Feel the resistance!','FontSize',50,'FontWeight','bold','Color','w');
                 aimless_ = false; 
                 tic;   % Start timer!
             end       

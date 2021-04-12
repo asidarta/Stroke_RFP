@@ -56,42 +56,44 @@ function gui_OpeningFcn(hObject, eventdata, handles, varargin)
 
 global strName;
 if(nargin==4), strName = varargin{:};   % Is this training or assessment?
-else strName = "Result";
+else strName = 'Result';
 end
 
-global subjID;
 % Choose default command line output for gui
 handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
 
+% Load data to initialize what user sees on the GUI
+load('setting.mat');
+handles.select = guiOut;
+
 % Initialize the handles as struct (this data type is important)
 my.subject = {'S01','S02','S03','S04','S05','S06','S07','S08','S09','S10',...
               'S11','S12','S13','S14','S15','S16','S17','S18','S19','S20',...
               'S21','S22','S23','S24','S25','S26','S27','S28','S29','S30'};
-if (strName == "train" || strName == "warmup")
-    my.session = {'1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'};
-    my.block   = {'1','2','3','4','5','6','7','8','9','10'};
+my.session = {'Base','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Post','1mth'};
+
+if ( strcmp(strName,'train'))
+    my.block   = {'1','2','3','4','5','6','7','8','9','10','11'};
+    set(handles.block, 'String', my.block);
+    set(handles.block, 'Value', find(strcmp(my.block, guiOut.block),1));
     set(handles.ctrl,'visible','on');
 else
-    my.session = {'Base','Post','1mth'};
     my.block   = {'1'};
+    set(handles.block, 'String', my.block);
+    set(handles.block, 'Value', 1);
     set(handles.ctrl,'visible','off')
 end
 
-% Place the array data as the content of the respective object
+% Assign the loaded data to be the content of the respective object
 set(handles.subject, 'String', my.subject);
-set(handles.session,  'String', my.session);
-set(handles.block, 'String', my.block);
-
-% Initialize, what does the user sees when the GUI appears?
-handles.select.subject = subjID; %my.subject{1};
-handles.select.session = my.session{1};
-handles.select.block   = my.block{1};
-handles.select.practice = 0;
-handles.select.control  = 0;
-handles.select.filename = " ";
+set(handles.subject, 'Value', find(strcmp(my.subject, guiOut.subject),1));
+set(handles.session, 'String', my.session);
+set(handles.session, 'Value', find(strcmp(my.session, guiOut.session),1) );
+set(handles.practice, 'Value', guiOut.practice);
+set(handles.ctrl, 'Value', guiOut.control);
 
 % Update handles structure
 guidata(handles.figure1, handles);
@@ -128,7 +130,6 @@ subject  = contents{get(hObject,'Value')};
 
 % Save the new subject ID
 handles.select.subject = subject;
-global subjID;  subjID = subject;
 guidata(hObject,handles)
 
 
@@ -246,9 +247,8 @@ localpath = strcat(myPath,'\Trial Data\');
 
 % Hint: get(hObject,'Value') returns toggle state of enterButton
 if (get(hObject,'Value'))
-    handles.select;
     formatOut = 'HHMM';    % Extract current time
-    filename = strcat(handles.select.subject,'\',handles.select.session,'\',handles.select.subject,...
+    filename = strcat(handles.select.subject,'\',handles.select.session,'\',handles.select.subject, ...
            '_',strName,'_',handles.select.session,'_',handles.select.block,'_',datestr(now,formatOut))
     
     % Pass the filename to handles.select struct
@@ -257,13 +257,8 @@ if (get(hObject,'Value'))
      
     % If the session folder doesn't exist, create one first to save the data
     if ~exist(strcat(localpath,handles.select.subject,'\',num2str(handles.select.session)), 'dir')
-        mkdir(strcat(localpath,handles.select.subject,'\',num2str(handles.select.session)))   % For session folder!
-    end
-
-    % If the session folder doesn't exist, create one first to save the data
-    if ~exist(strcat(localpath,handles.select.subject), 'dir')
         fprintf('Subject folder not found. Creating one....\n\n');
-        mkdir(strcat(localpath,handles.select.subject))    % name the folder as subjID!
+        mkdir(strcat(localpath,handles.select.subject,'\',num2str(handles.select.session)))   % For session folder!
     else
         fprintf('Subject folder found or already created!\n\n');
     end
@@ -272,7 +267,8 @@ if (get(hObject,'Value'))
     fprintf('Testing %s, session %s, block %s as %s\n\n', handles.select.subject, ...
         handles.select.session, handles.select.block, ctrl);   % display for checking...
     
-    close;
+    % Use UIRESUME instead of delete because the OutputFcn needs to get updated handles structure.
+    uiresume(handles.figure1);
 
 end
 

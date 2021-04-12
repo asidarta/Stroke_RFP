@@ -9,18 +9,18 @@ clc;
 clear; close all; 
 fprintf("\n--------   Joint Position Matching   --------\n");
 
-
-%% First, establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
-
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
-guiOut = gui( "soma_jpm" );
+guiOut = gui( 'soma_jpm' );
+save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
 session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
-pause(1.0)
+
+
+%% Then establish connection with H-MAN!
+% Obtain the instance handler, stiffness, and damping parameters.
+[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -85,8 +85,8 @@ sound(eyes_wav, Fs);
 text(-0.075,0.16,'Eyes closed and always relax!','FontSize',38,'FontWeight','bold','Color','g');
 
 % Reading audio file for reference movement
-[ref, Fs]   = audioread( strcat(myPath,'\Audio\reference.mp3') );
-[match, Fs] = audioread( strcat(myPath,'\Audio\matching.mp3') );
+[ref, Fs1]   = audioread( strcat(myPath,'\Audio\reference.mp3') );
+[match, Fs2] = audioread( strcat(myPath,'\Audio\matching.mp3') );
 
 fprintf('\nPress <Spacebar> to continue ..........\n');
 while pauseFlag     % There will be Pause to ensure subjects are ready
@@ -117,8 +117,8 @@ while (curTrial <= Ntrial) && (~bailOut)
     % Convert position into string for robot command
     Xpos = num2str(out(:,1)); Ypos = num2str(out(:,2));
     
-    sound(ref, Fs);     
-    %pause_me(delay_at_target); 
+    sound(ref, Fs1);     
+    pause(3.0); 
 
     % (4a) Move handle to target!
     trialFlag = 5;
@@ -180,7 +180,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     % (8) Play BEEP tone and display MOVE cue for 1.5 sec...
     %pause_me(1);  
     goCue = plot_image([], 10, 0, 0.1, 20);
-    play_tone(1250, 0.16);
+    play_tone(1250, 0.1);
     pause_me(delay_at_target);
     
     while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"

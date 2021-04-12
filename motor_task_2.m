@@ -9,25 +9,29 @@ clc; clear; close all;
 fprintf("\n---------   Training sessions   --------\n");
 fprintf("Take note whether this client is a control group.... \n\n");
 
-
-%% First, establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
-
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
-guiOut = gui( "train" );
+guiOut = gui( 'train' );
+save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
 session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
-pause(1.0)
+
+
+%% Then establish connection with H-MAN!
+% Obtain the instance handler, stiffness, and damping parameters.
+[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 
 %% Trial-related parameters -----------------------------------------------
-Ntrial = 20;        % Total trials per block (Revised again, 26 March 2021)
+Ntrial = 24;        % Total trials per block (Revised again, 13 Apr 2021)
 hitScore  = 0;      % After each successfully hit the target add +10
 toshuffle = repmat(1:4,[1 Ntrial/4]);      % We have 4 target directions!
-eachTrial = Shuffle(toshuffle);            % We shuffle the target position
+%eachTrial = Shuffle(toshuffle);            % We shuffle the target position
+
+if (mod(imgNum,2)), direct='ascend'; else, direct='descend'; end
+eachTrial = sort(toshuffle,direct);        % We shuffle the target position
+
 trialData = double.empty();
 toSave = double.empty();                   % Initialize variable to save kinematic data
 toSave2 = double.empty();                  % Initialize variable to save trial outcome
@@ -93,7 +97,7 @@ txt4 = 'Do not give up!';
 
 fprintf('\nPress <Spacebar> to continue ..........\n');
 while pauseFlag     % There will be Pause to ensure subjects are ready
-    pauseText = text(-0.055,0.14,"Ready to play?",'FontSize',55,'Color','w','FontWeight','bold');
+    pauseText = text(-0.06,0.14,strcat('Ready for Block-',num2str(imgNum)),'FontSize',57,'Color','w','FontWeight','bold');
     pause(0.5);   delete(pauseText);
 end
 
@@ -143,11 +147,11 @@ for curTrial = 1:Ntrial
             delete(instantCursor);   % remove from the plot first, then redraw the cursor
             if (showCursor)
                 %instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);
-                instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3);
+                instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',23,'LineWidth',3);
             else
-                if (dist2Start < 0.02)
+                if (dist2Start < 0.025)
                     %instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);
-                    instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3);
+                    instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',23,'LineWidth',3);
                 else   % remove the cursor if beyond a certain distance from the start
                     delete(instantCursor);
                 end
@@ -218,8 +222,8 @@ for curTrial = 1:Ntrial
                                                          get_Kinematic( trialData, targetCtr(m,:), sample_freq );
                 fprintf('   Distance: %.2f cm, and lateral error: %.2f cm\n', dist2Target*100, t_pd_target*100);
 
-                % Check criteria for reward: distance from target and ABS lateral error shd be within the target size
-                if (dist2Target < targetSize/1000 && abs(t_pd_target) < targetSize/750)   % updated, take absolute!
+                % Check criteria for reward: the distance from target
+                if (dist2Target < targetSize/1000)   % && abs(t_pd_target) < targetSize/750
                     fprintf('   Target hit. Well done!\n');             
                     hitFlag = true;  hitCol = 'green';
                 else
@@ -237,11 +241,11 @@ for curTrial = 1:Ntrial
                 
                 % Note: We give INTERMITTENT FEEDBACK (KR and KP)
                 if(showReward)            
+                    txt2 = play_KR(hitFlag);  % feedback!----------
                     if (hitFlag) 
                         % Play audio feedback. Note: ensure it's called ONCE only!             
                         % Show the text on the screen as positive feedback!
                         hitScore = hitScore + 10;     % Increase hit score
-                        txt2  = play_KR(myPath);
                         mymsg = [txt2, newline, txt3, ' ', int2str(hitScore)];
                         text(-0.055,0.175,mymsg,'FontSize',45,'Color',hitCol,'FontWeight','bold');
                     else

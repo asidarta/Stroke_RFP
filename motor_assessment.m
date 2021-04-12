@@ -9,18 +9,18 @@ clc;
 clear; close all;
 fprintf("\n--------   Motor Assessment   --------\n");
 
-
-%% First, establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
-
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
-guiOut = gui( "motor" );
+guiOut = gui( 'motor' );
+save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
 session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
-pause(1.0)
+
+
+%% Then, establish connection with H-MAN!
+% Obtain the instance handler, stiffness, and damping parameters.
+[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -321,7 +321,7 @@ fprintf("\nClosing connection to H-man................\n");
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
 fprintf('\nMotor assessment has finished, bye!!\n');
-pause(4.0)
+pause(3.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection..........\n");
 
