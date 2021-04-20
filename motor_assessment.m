@@ -15,7 +15,7 @@ guiOut = gui( 'motor' );
 save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
-session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
+session = guiOut.session; imgNum = str2num(guiOut.block);
 
 
 %% Then, establish connection with H-MAN!
@@ -136,7 +136,7 @@ for curTrial = 1:Ntrial
         if(counter == 8)% && trialFlag == 1)
             delete(instantCursor);   % remove from the plot first, then redraw the cursor
             %instantCursor = plot(myXpos,myYpos,'w.','MarkerSize',60);
-            instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3);
+            instantCursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',23,'LineWidth',3);
             counter = 0;
         else
             counter = counter + 1;            
@@ -264,6 +264,7 @@ for curTrial = 1:Ntrial
         %    col-11   : Elapsed time per sample
         %    col-12   : Emergency button status
         %    col-13   : Force total by robot
+        %    col-14,15 : Session, block number  >>> But added after converting to table format
         trialData =  [ trialData; curTrial, trialFlag, m, ang(m), ...
                        double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                        double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
@@ -276,7 +277,7 @@ for curTrial = 1:Ntrial
         stpx, stpy, PeakVel ] =  get_Kinematic( trialData, targetCtr(m,:), sample_freq );
    
     toSave2 = [toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,...
-                         t_pdmaxv_target,t_pd200_target,stpx, stpy, PeakVel] ];
+                         t_pdmaxv_target,t_pd200_target,stpx, stpy, PeakVel, ang(m)] ];
     
     % We also appendd trajectory data to the Mega Array to be saved!
     toSave = [toSave; trialData]; 
@@ -300,13 +301,19 @@ end
 %% Saving trajectory and trial-outcome data as tables with headers!
 % Save only when this is not Practice, and when the data content is not empty.
 if (~practice && ~isempty(toSave) && ~isempty(toSave2))
+    % Saving trajectory data...
     varNames = {'trial','flag','m','angle','posX','posY','velX','velY','hit','score','elapsed','emerg','force'};
-    writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
-                strcat(myPath, 'Trial Data\',myresultfile,'.csv'));
+    toSave = array2table(toSave,'VariableNames',varNames);
+    toSave = addvars(toSave, repmat(session,[size(toSave,1) 1]),'NewVariableNames','session','after','force');
+    toSave = addvars(toSave, repmat(imgNum, [size(toSave,1) 1]),'NewVariableNames','block','after','session');
+    writetable( toSave, strcat(myPath,'Trial Data\',myresultfile,'_traj.csv'));
+    % Trial result data....
     varNames = {'curTrial','dist2Target','t_meanpd_target','t_area_target','t_pd_target','t_pdmaxv_target', ...
-                't_pd200_target','stpx','stpy','PeakVel'};
-    writetable( array2table(toSave2,'VariableNames',varNames), ... % Trial result data
-                strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'));         
+                't_pd200_target','stpx','stpy','PeakVel','angle'};
+    toSave2 = array2table(toSave2,'VariableNames',varNames);
+    toSave2 = addvars(toSave2, repmat(session,[size(toSave2,1) 1]),'NewVariableNames','session','after','angle');
+    toSave2 = addvars(toSave2, repmat(imgNum, [size(toSave2,1) 1]),'NewVariableNames','block','after','session');
+    writetable( toSave2, strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'))                
 end
             
 % For safety: Ensure the force is null after quiting the loop!

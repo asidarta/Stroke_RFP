@@ -6,7 +6,7 @@ function textout = play_KR( reward )
 %     1: "Good job",   2: "Well done",   3: "Excellent"    4-6: NONE
 
 global myPath; %= 'C:\Users\ananda.sidarta\Documents\MATLAB\';
-number = randi([1,6],1,1);  % This handles the different possible encouragement
+number = randi([1,9],1,1);  % This handles the different possible encouragement
 
 if (reward)
     % For any successful movements, we give this coin sound.
@@ -27,6 +27,14 @@ if (reward)
         [wav_out, Fs] = audioread( strcat(myPath,'\Audio\nice_move.mp3') );
         %fprintf('Feedback: Excellent!\n');
         %textout = '     Excellent!';
+    case 4
+        [wav_out, Fs] = audioread( strcat(myPath,'\Audio\well_done.mp3') );
+        %fprintf('Feedback: Well done!\n');
+        %textout = '     Well done!';
+    case 5
+        [wav_out, Fs] = audioread( strcat(myPath,'\Audio\good_job.mp3') );
+        %fprintf('Feedback: Good job!\n');
+        %textout = '     Good job!';
     otherwise
         fprintf('Feedback: N/A (intermittent)\n');   wav_out = [];
         %textout = '';
@@ -37,10 +45,13 @@ else
     switch (number)
     case 1
         [wav_out, Fs] = audioread( strcat(myPath,'\Audio\dont_giveup.mp3') );
+        %textout = '    Dont give up!';
     case 2
-        [wav_out, Fs] = audioread( strcat(myPath,'\Audio\check_move.mp3') );
-    %case 3
-    %    [wav_out, Fs] = audioread( strcat(myPath,'\Audio\keep_try.mp3') );
+        [wav_out, Fs] = audioread( strcat(myPath,'\Audio\keep_try.mp3') );
+        %textout = '    Keep trying!';
+    case 3
+        [wav_out, Fs] = audioread( strcat(myPath,'\Audio\move_closer.mp3') );
+        %textout = '    Move closer!';
     otherwise
         wav_out = []; Fs = 1000;  % dummy
     end

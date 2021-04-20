@@ -118,7 +118,7 @@ while (1)
     speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) * sample_freq;
     pause(0.015);  % give small delay!
 
-    trialData =  [ trialData; double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
+    trialData =  [ trialData; session, double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                    double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y)];
     
     lastXpos = myXpos; lastYpos = myYpos;
@@ -130,7 +130,7 @@ end
 
 % Save the data to check the Range of Motion! Save only when it's not practice!
 if (~practice && ~isempty(trialData))
-    varNames = {'posX','posY','velX','velY'};
+    varNames = {'session','posX','posY','velX','velY'};
     writetable( array2table(trialData,'VariableNames',varNames), strcat(myPath, 'Trial Data\',myresultfile,'_ROM.csv'));
     fprintf('\nSaving data for Part-1 warm up........\n');
 end
@@ -348,7 +348,7 @@ for curTrial = 1:Ntrial
                        double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                        double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
                        hitFlag, hitScore, elapsed, double(instance.hman_data.state), ...
-                       double(instance.hman_data.force) ];
+                       double(instance.hman_data.force), session ];
     end
         
     % We also append trajectory data to the Mega Array to be saved!

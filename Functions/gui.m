@@ -73,10 +73,10 @@ handles.select = guiOut;
 my.subject = {'S01','S02','S03','S04','S05','S06','S07','S08','S09','S10',...
               'S11','S12','S13','S14','S15','S16','S17','S18','S19','S20',...
               'S21','S22','S23','S24','S25','S26','S27','S28','S29','S30'};
-my.session = {'Base','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Post','1mth'};
+my.session = {'Base','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','Post','1mth'};
 
-if ( strcmp(strName,'train'))
-    my.block   = {'1','2','3','4','5','6','7','8','9','10','11'};
+if ( strcmp(strName,'train') )
+    my.block   = {'1','2','3','4','5','6','7','8','9','10'};
     set(handles.block, 'String', my.block);
     set(handles.block, 'Value', find(strcmp(my.block, guiOut.block),1));
     set(handles.ctrl,'visible','on');
@@ -92,7 +92,7 @@ set(handles.subject, 'String', my.subject);
 set(handles.subject, 'Value', find(strcmp(my.subject, guiOut.subject),1));
 set(handles.session, 'String', my.session);
 set(handles.session, 'Value', find(strcmp(my.session, guiOut.session),1) );
-set(handles.practice, 'Value', guiOut.practice);
+set(handles.practice, 'Value', 0);
 set(handles.ctrl, 'Value', guiOut.control);
 
 % Update handles structure
@@ -216,6 +216,12 @@ function practice_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of practice
 practice = get(hObject,'Value');
 
+% Disable user interface when practice, no need to set anything...
+if practice, status = 'Off'; else, status = 'On'; end
+set(handles.subject, 'Enable', status);
+set(handles.session, 'Enable', status);
+set(handles.block, 'Enable', status);
+
 % Save the new block value
 handles.select.practice = practice;
 guidata(hObject,handles)
@@ -250,11 +256,7 @@ if (get(hObject,'Value'))
     formatOut = 'HHMM';    % Extract current time
     filename = strcat(handles.select.subject,'\',handles.select.session,'\',handles.select.subject, ...
            '_',strName,'_',handles.select.session,'_',handles.select.block,'_',datestr(now,formatOut))
-    
-    % Pass the filename to handles.select struct
-    handles.select.filename = filename;
-    guidata(hObject,handles);    % update the handles!
-     
+ 
     % If the session folder doesn't exist, create one first to save the data
     if ~exist(strcat(localpath,handles.select.subject,'\',num2str(handles.select.session)), 'dir')
         fprintf('Subject folder not found. Creating one....\n\n');
@@ -264,12 +266,26 @@ if (get(hObject,'Value'))
     end
     
     if (handles.select.control), ctrl='control'; else ctrl='treatment'; end;
-    fprintf('Testing %s, session %s, block %s as %s\n\n', handles.select.subject, ...
-        handles.select.session, handles.select.block, ctrl);   % display for checking...
-    
+
+    if (handles.select.practice), fprintf('Giving practice with instruction first\n\n');
+    else
+        if (strcmp(strName,'train'))
+            fprintf('Training %s, session %s, block %s as %s\n\n', handles.select.subject, ...
+            handles.select.session, handles.select.block, ctrl);   % display for checking...
+        else
+            fprintf('Testing %s, session %s\n\n', handles.select.subject, handles.select.session);
+        end
+    end
+        
+    handles.select.practice = 0; %%%s
+
+    % Pass the filename to handles.select struct
+    handles.select.filename = filename;
+    guidata(hObject,handles);    % update the handles!
+     
     % Use UIRESUME instead of delete because the OutputFcn needs to get updated handles structure.
     uiresume(handles.figure1);
-
+    
 end
 
 

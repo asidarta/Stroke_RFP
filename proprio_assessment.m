@@ -15,12 +15,15 @@ guiOut = gui( 'soma_jpm' );
 save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
-session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
+session = guiOut.session; imgNum = str2num(guiOut.block);
 
 
 %% Then establish connection with H-MAN!
 % Obtain the instance handler, stiffness, and damping parameters.
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+
+% Imporant to lock the position before starting!
+hold_pos(instance);
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -65,7 +68,7 @@ global pauseFlag;   pauseFlag = true;
 % Create circular target traces. Here, I define four target locations for reaching.
 targetDist = 0.15;
 
-c = 0.005*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
+c = 0.008*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
 plot( c(1,:),c(2,:),'b','LineWidth',5 ); hold on;
 plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
       c(1,:)+targetDist*cosd(60), c(2,:)+targetDist*sind(60), ... 
@@ -80,20 +83,21 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 
 % Define the required audio file: Ask subjects to stay relaxed!
-[eyes_wav, Fs] = audioread( strcat(myPath,'\Audio\close_eyes.mp3') );
-sound(eyes_wav, Fs);
-text(-0.075,0.16,'Eyes closed and always relax!','FontSize',38,'FontWeight','bold','Color','g');
+%[eyes_wav, Fs] = audioread( strcat(myPath,'\Audio\close_eyes.mp3') );
+%sound(eyes_wav, Fs);
+%msg0 = text(-0.075,0.16,'Eyes closed and always relax!','FontSize',38,'FontWeight','bold','Color','g');
+
 
 % Reading audio file for reference movement
 [ref, Fs1]   = audioread( strcat(myPath,'\Audio\reference.mp3') );
-[match, Fs2] = audioread( strcat(myPath,'\Audio\matching.mp3') );
+%[match, Fs2] = audioread( strcat(myPath,'\Audio\matching.mp3') );
 
 fprintf('\nPress <Spacebar> to continue ..........\n');
 while pauseFlag     % There will be Pause to ensure subjects are ready
     pauseText = text(-0.055,0.14,"Ready to play?",'FontSize',55,'Color','w','FontWeight','bold');
     pause(0.5);   delete(pauseText);
 end
-
+%delete(msg0);
 
 
 %% TRIAL LOOP = Keep looping until Ntrial is met OR a key is pressed
@@ -103,29 +107,26 @@ while (curTrial <= Ntrial) && (~bailOut)
     fprintf('\nTRIAL %d, ANGLE: %d\n', curTrial, ang(m));
     
     % PART 1: Generate reference trajectory to a target position ---------------------
-    % (1) Ensure robot produces no force
-    null_force(instance);
-
-    % (2) Set target position and other parameters
+    % (1) Set target position and other parameters
     start_X = 0;   start_Y = 0;
     end_X   = 1000 * targetCtr(m,1);  % Unit: mm -> m
     end_Y   = 1000 * targetCtr(m,2);  % Unit: mm -> m
 
-    % (3) Creating minimum jerk trajectory to target position
+    % (2) Creating minimum jerk trajectory to target position
     out = min_jerk([start_X start_Y 0], [end_X end_Y 0], t);
     fprintf('   1. Producing reference trajectory.\n');
     % Convert position into string for robot command
     Xpos = num2str(out(:,1)); Ypos = num2str(out(:,2));
     
-    sound(ref, Fs1);     
-    pause(3.0); 
+    sound(ref, Fs1);   pause(3.0);  % Ask to pay attention for reference movement    
+    null_force(instance);     % Release hold position
 
-    % (4a) Move handle to target!
+    % (3) Move handle to target!
     trialFlag = 5;
     for j = 1:length(out)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
-        plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'b.');
+        %plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'k.');
         pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
@@ -138,12 +139,12 @@ while (curTrial <= Ntrial) && (~bailOut)
    
     if (~isempty(trialData))
         % Plot this trajectory. Save trial data into a mega array;    
-        %h1 = plot(trialData(:,5), trialData(:,6), 'b.');
+        %h1 = plot(trialData(:,5), trialData(:,6), 'k.');
         toSave = [toSave; trialData];
         trialData = double.empty();
     end
     
-    % Pause for 2 seconds at the target location
+    % (4) Pause for 2 seconds at the target location
     pause_me(delay_at_target);   
 
     % (5) Create minimum jerk trajectory back to START position
@@ -156,7 +157,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     for j = 1:length(out2)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
-        plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'b.');
+        %plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'k.');
         pause(1/sample_freq);
         trialData(j,:) = [ curTrial, trialFlag, m, ang(m), ... 
                            double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
@@ -169,7 +170,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     
     if (~isempty(trialData))
         % Plot this trajectory. Save trial data into a mega array;    
-        %h2 = plot(trialData(:,5), trialData(:,6), 'b.');
+        %h2 = plot(trialData(:,5), trialData(:,6), 'k.');
         toSave = [toSave; trialData];
         trialData = double.empty();
     end
@@ -179,12 +180,12 @@ while (curTrial <= Ntrial) && (~bailOut)
 
     % (8) Play BEEP tone and display MOVE cue for 1.5 sec...
     %pause_me(1);  
-    goCue = plot_image([], 10, 0, 0.1, 20);
-    play_tone(1250, 0.1);
+    goCue = plot_image([], 10, 0, 0.1, 30);
+    play_tone(1250, 0.2);
     pause_me(delay_at_target);
     
     while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
-        pauseText = text(-0.01,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
+        pauseText = text(-0.013,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
         pause(0.001);
         delete(pauseText);
     end
@@ -261,7 +262,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     
     if (~isempty(trialData))
         % Plot this trajectory. Save trial data into a mega array;
-        h3 = plot(trialData(:,5), trialData(:,6), 'w.');
+        %h3 = plot(trialData(:,5), trialData(:,6), 'k.');
         toSave = [toSave; trialData];
         trialData = double.empty();
     end
@@ -281,7 +282,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     for j = 1:length(out4)
         xt = Xpos(j,:);  yt = Ypos(j,:);
         instance.SetTarget(xt,yt,kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0'); 
-        plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'b.');
+        %plot(instance.hman_data.location_X, instance.hman_data.location_Y, 'k.');
         pause(1/sample_freq);
         if (bailOut)
             break; % Shall bail out if we press any key!
@@ -295,12 +296,12 @@ while (curTrial <= Ntrial) && (~bailOut)
     
     % (7) Clear the figure from old position data. First, obtain the handler to the
     % children part of the figure, then delete the components!
-    try    
+    %try    
         %delete([h1,h2,h3]);
-        mychild  = fig.Children.Children;
-        delete(mychild(1:length(mychild)-6));
-    catch
-    end
+        %mychild  = fig.Children.Children;
+        %delete(mychild(1:length(mychild)-6));
+    %catch
+    %end
     % (8) Ready to continue to the next trial...
     curTrial = curTrial + 1;
 
@@ -317,11 +318,15 @@ end
         %    col-7,8 : handle X,Y velocity
         %    col-9   : Emergency button state
         %    col-10  : force value
+        %    col-11,12 : Session, block number
 if (~practice && ~isempty(toSave))
     varNames = {'trial','flag','m','angle','posX','posY','velX','velY','emerg','force'};
-    writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
-            strcat(myPath, 'Trial Data\',myresultfile,'.csv'));          
-end        
+    toSave = array2table(toSave,'VariableNames',varNames);
+    toSave = addvars(toSave, repmat(session,[size(toSave,1) 1]),'NewVariableNames','session','after','force');
+    toSave = addvars(toSave, repmat(imgNum, [size(toSave,1) 1]),'NewVariableNames','block','after','session');
+    writetable( toSave, strcat(myPath,'Trial Data\',myresultfile,'_traj.csv'));
+end 
+
 % For safety: Ensure the force is null after quiting the loop!
 null_force(instance); 
 

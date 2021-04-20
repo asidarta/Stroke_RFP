@@ -176,9 +176,11 @@ for curTrial = 1:Ntrial
 
             % NEW: Virtual channel based on target angle, current handle position, ch size!
             if (~control)  % this feedback is not for control group!
-                channel(ang(m), [myXpos,myYpos], instance, 5);
+                %if (dist2Start < 0.14)
+                    channel(ang(m), [myXpos,myYpos], instance, 5);
+                %end
             end
-            
+                
             % Record mouse position in in an array
             thePoints = [thePoints; myXpos myYpos];          
         
@@ -198,7 +200,7 @@ for curTrial = 1:Ntrial
                 end
                 % If the cursor is close enough to the TARGET, check if the movement 
                 % is SLOW enough, almost stopping. Then prepare to HOLD for 1.5 seconds.
-                if (speed < 10),    timerFlag = false;   % Update flag to allow tic again
+                if (speed < 8),    timerFlag = false;   % Update flag to allow tic again
                 else,     timerFlag = true;    % Update flag to allow tic again
                 end                
                 if (toc > delay_at_target)
@@ -223,16 +225,17 @@ for curTrial = 1:Ntrial
                 fprintf('   Distance: %.2f cm, and lateral error: %.2f cm\n', dist2Target*100, t_pd_target*100);
 
                 % Check criteria for reward: the distance from target
-                if (dist2Target < targetSize/1000)   % && abs(t_pd_target) < targetSize/750
+                if (dist2Target < targetSize/900)   % && abs(t_pd_target) < targetSize/750
                     fprintf('   Target hit. Well done!\n');             
                     hitFlag = true;  hitCol = 'green';
                 else
                     fprintf('   Be more accurate!\n');
                     hitFlag = false; hitCol = 'red';
                 end
+                ang(m)
                 % Then save the performance data and reward status
                 toSave2 = [toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,...
-                                     t_pd200_target,stpx,stpy,PeakVel,targetSize,hitFlag] ];
+                                     t_pd200_target,stpx,stpy,PeakVel,targetSize,hitFlag,ang(m),session,imgNum] ];
            end
             if (toc > 0.3)  % just a short delay here
                 trialFlag = 3;
@@ -280,14 +283,14 @@ for curTrial = 1:Ntrial
                 % After minimum jerk has finished, the handle may not go back exactly since 
                 % the robot is quite weak. The robot is quite weak, we ensure the handle 
                 % goes back to the START first.
-                if (dist2Start >= 10)
-                    instance.SetTarget('0','0','2000','2000','0','0','0','0','0','0','1','0'); 
-                else
+                %if (dist2Start >= 10)
+                %    instance.SetTarget('0','0','2000','2000','0','0','0','0','0','0','1','0'); 
+                %else
                     % Set hold position of H-man, run only once! >>>>>>>>>>>>>>
                     hold_pos(instance);
                     % Go to the LAST stage
                     trialFlag = 4;
-                end
+                %end
                 timerFlag = true;    % Update flag to allow new 'tic'
                 % Using children handler, remove performance feedback after a while..............
                 mychild  = fig.Children.Children;
@@ -339,10 +342,12 @@ for curTrial = 1:Ntrial
         %    col-11   : Elapsed time per sample
         %    col-12   : Emergency button status
         %    col-13   : Force total by robot
+        %    col-14,15 : Session, block number
         trialData =  [ trialData; curTrial, trialFlag, m, ang(m), ...
                        double(instance.hman_data.location_X), double(instance.hman_data.location_Y), ...
                        double(instance.hman_data.velocity_X), double(instance.hman_data.velocity_Y), ...
-                       hitFlag, hitScore, elapsed, double(instance.hman_data.state), double(instance.hman_data.force) ];
+                       hitFlag, hitScore, elapsed, double(instance.hman_data.state), ...
+                       double(instance.hman_data.force), session, imgNum  ];
     end
     
     % We also append trajectory data to the Mega Array to be saved!
@@ -366,11 +371,11 @@ end
 %% Saving trajectory and trial-outcome data as tables with headers! 
 % Save only when this is not Practice, and when the data content is not empty.
 if (~practice && ~isempty(toSave) && ~isempty(toSave2))
-    varNames = {'trial','flag','m','angle','posX','posY','velX','velY','hit','score','elapsed','emerg','force'};
+    varNames = {'trial','flag','m','angle','posX','posY','velX','velY','hit','score','elapsed','emerg','force','session','block'};
     writetable( array2table(toSave,'VariableNames',varNames), ... % Trajectory data
-                strcat(myPath, '\Trial Data\',myresultfile,'.csv'));  
+                strcat(myPath, '\Trial Data\',myresultfile,'_traj.csv'));  
     varNames = {'curTrial','dist2Target','t_meanpd_target','t_area_target','t_pd_target','t_pdmaxv_target', ...
-                't_pd200_target','stpx','stpy','PeakVel','targetSize','hitFlag'};
+                't_pd200_target','stpx','stpy','PeakVel','targetSize','hitFlag','angle','session','block'};
     writetable( array2table(toSave2,'VariableNames',varNames), ... % Trial result data
                 strcat(myPath, '\Trial Data\',myresultfile,'_results.csv'));         
 end
