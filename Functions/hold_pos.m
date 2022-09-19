@@ -11,10 +11,10 @@ targ_X = inst.hman_data.location_X*1000; % Unit: mm -> m
 targ_Y = inst.hman_data.location_Y*1000; % Unit: mm -> m
 
 % Define stiffness and damping values for hold_position.
-k_xx = 6000;
-k_yy = 6000;
-k_xy = 200;
-k_yx = 200;
+k_xx = 3500;
+k_yy = 3500;
+k_xy = 50;
+k_yx = 50;
 b_xx = 0;
 b_yy = 0;
 b_yx = 0;

@@ -5,9 +5,18 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-clc;
-clear; close all; 
+function proprio_assessment2 (instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx)
+
+clc; close all 
 fprintf("\n------ Passive Matching Task with Keypress -----\n");
+
+
+%% Connection has been established when you call the MainMenu.........
+% First, establish connection with H-MAN and lock the Handle! (17Nov21)
+% Obtain the instance handler, stiffness, and damping parameters.
+%[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+%hold_pos(instance);  % >>>>>>>
+
 
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
@@ -17,13 +26,6 @@ subjID = guiOut.subject;  myresultfile = guiOut.filename;
 control= guiOut.control;  practice = guiOut.practice;
 session = guiOut.session; imgNum = str2num(guiOut.block);
 
-
-%% Then establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
-
-% Imporant to lock the position before starting!
-hold_pos(instance);
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -66,8 +68,8 @@ global replayOut;   replayOut = false;
 global pauseFlag;  pauseFlag = true;
 
 % Create circular target traces. Here, I define four target locations for reaching.
-targetDist = 0.11;     % 11 cm reference distance 
-replay_Dist = 0.17;    % 17 cm replay distance (to be used in PART-2)
+targetDist = 0.115;     % 11 cm reference distance 
+replay_Dist = 0.175;    % 17 cm replay distance (to be used in PART-2)
 
 c = 0.008*[cos(0:2*pi/100:2*pi);sin(0:2*pi/100:2*pi)];
 plot( c(1,:)+targetDist*cosd(30), c(2,:)+targetDist*sind(30), ...
@@ -92,11 +94,13 @@ ang = [30,60,120,150];  % Angle (degree) w.r.t positive X-axis.
 
 fprintf('\nPress <Spacebar> to continue ..........\n');
 while pauseFlag     % There will be Pause to ensure subjects are ready
-    pauseText = text(-0.055,0.14,"Ready to play?",'FontSize',55,'Color','w','FontWeight','bold');
+    pauseText = text(-0.055,0.14,"Are you ready?",'FontSize',55,'Color','w','FontWeight','bold');
     pause(0.5);   delete(pauseText);
 end
 %delete(msg0);
 
+% Reminder for subjects to remain relaxed at all time.
+text(-0.075,0.14,"Always relaxed and feel!",'FontSize',50,'Color','w','FontWeight','bold');
 
 %% TRIAL LOOP = Keep looping until Ntrial is met OR a key is pressed
 while (curTrial <= Ntrial) && (~bailOut)
@@ -173,16 +177,14 @@ while (curTrial <= Ntrial) && (~bailOut)
         
     % (7) Hold the handle position at the START.
     hold_pos(instance);
+    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
+        pauseText = text(-0.04,0.16,"Pausing...",'FontSize',55,'Color','w','FontWeight','bold');
+        pause(0.5);  delete(pauseText);
+    end
     
     % (8) Play BEEP tone and display MOVE cue for 1.5 sec...  
     play_tone(1250, 0.15);
-    pause_me(delay_at_target);
-    
-    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
-        pauseText = text(-0.04,0.16,"Pausing...",'FontSize',55,'Color','w','FontWeight','bold');
-        pause(0.5);
-        delete(pauseText);
-    end
+    %pause_me(delay_at_target);
     
     
     % PART 2: Let the user decides to match the reference distance ----------------------
@@ -267,6 +269,11 @@ while (curTrial <= Ntrial) && (~bailOut)
     pause_me(delay_at_target);
     fprintf('   4. Moving to NEXT TRIAL!\n');
     
+    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
+        pauseText = text(-0.04,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
+        pause(0.5); delete(pauseText);
+    end
+    
     % (9) Clear the figure from old position data. First, obtain the handler to the
     % children part of the figure, then delete the components!
     %try    
@@ -291,17 +298,16 @@ end
 if (~practice && ~isempty(toSave))
     varNames = {'trial','flag','m','angle','posX','posY','velX','velY','emerg','force'};
     toSave = array2table(toSave,'VariableNames',varNames);
-    toSave = addvars(toSave, repmat(session,[size(toSave,1) 1]),'NewVariableNames','session','after','force');
-    toSave = addvars(toSave, repmat(imgNum, [size(toSave,1) 1]),'NewVariableNames','block','after','session');
+    toSave.session = repmat(session,[size(toSave,1) 1]);
+    toSave.block   = repmat(imgNum, [size(toSave,1) 1]);
     writetable( toSave, strcat(myPath,'Trial Data\',myresultfile,'_traj.csv'));
 end 
 
-% For safety: Ensure the force is null after quiting the loop!
-null_force(instance); 
+% Finally, we secure the handle even after the session ends (3Dec2021)
+hold_pos(instance);
+% No longer stop TCP connection every time the session ends (3Dec2021)
+%instance.CloseConnection();
 
-% Stop TCP connection 
-instance.CloseConnection();
-fprintf("\nClosing connection to H-man................\n");
 
 
 %% Indicate code has ended by playing an audio message
@@ -311,6 +317,8 @@ fprintf('\nProprioception Test-2 finished, bye!!\n');
 pause(2.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection..........\n");
+
+end  % end of primary function %%%%%%%%%%%%%%%%%%%%%
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
@@ -322,13 +330,13 @@ function [bailOut, replayOut] = KeyPressFcn(~,evnt)
        bailOut = true;
        replayOut = false;
     end
-    if(evnt.Key=="return")
+    if(evnt.Key=="uparrow")
        bailOut = false;
        replayOut = true;
     end
     if(evnt.Key=="space")
        pauseFlag = ~pauseFlag; 
-       if (pauseFlag), fprintf("Pausing the game now.....\n");
+       if (pauseFlag), fprintf("Pausing the game now. Press <Spacebar> again to continue!\n");
        else, fprintf("Continuing the game now.....\n");
        end
     end

@@ -10,13 +10,13 @@ function [flag, k_matY, b_matY] = channel ( theta, pos, instance, ch_size )
 %    kmax = 1500;
 %end
 if ~exist('ch_size', 'var')
-    ch_size = 5;
+    ch_size = 8;
 end
 
 
 % Create stiffness and damping matrices....
-stiff   = [700 0;0 1];      % predefined stiffness value (N/m)
-damp    = [50  0;0 20];     % predefined viscous field (N.s/m)
+stiff   = [400 0;0 1];      % predefined stiffness value (N/m)
+damp    = [30  0;0 15];     % predefined viscous field (N.s/m)
 
 % Define channel angle w.r.t X-axis, in degrees.
 %theta = 90;

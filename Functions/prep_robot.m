@@ -13,7 +13,7 @@ Log = NET.addAssembly(strcat(my_pwd,'\NLog.dll'));
 
 
 %% Establish connection with robot!
-fprintf("Preparing connection to H-man................\n");
+fprintf("Preparing the H-man robot (check the side Blue Light)...\n");
 
 % IMPORTANT: This creates the object ‘instance’ of the ‘Articares.Core.ArticaresComm’ 
 % class through a MATLAB function and establish the TCP connection
@@ -28,8 +28,8 @@ instance.SetTarget('0','0','0','0','0','0','0','0','0','0','1','0');
 
 %% Robot parameter setup: stiffness (N/m) and viscuous field (N.s/m)!
 % Set stiffness and damping parameters in numerical values.
-kxx = num2str(3500);
-kyy = num2str(3500);
+kxx = num2str(2500);
+kyy = num2str(2500);
 kxy = num2str(0); 
 kyx = num2str(0);
 bxx = num2str(0);  

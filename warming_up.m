@@ -5,9 +5,18 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%&%%%%%%%%%
 
 
-clc;
-clear; close all;
+function warming_up (instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx)
+
+clc; close all
 fprintf("\n--------  Warming up (Preparation)   --------\n");
+
+
+%% Connection has been established when you call the MainMenu.........
+% First, establish connection with H-MAN and lock the Handle! (17Nov21)
+% Obtain the instance handler, stiffness, and damping parameters.
+%[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+%hold_pos(instance);  % >>>>>>>
+
 
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
@@ -16,11 +25,6 @@ save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
 session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
-
-
-%% Then, establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -94,16 +98,22 @@ actx.settings.playCount = 999; % Play the media 999 times
 soundfig.set('DefaultFigureVisible','on'); 
 
 
+fprintf('\nPress <Spacebar> to continue ..........\n');
+while pauseFlag     % There will be Pause to ensure subjects are ready
+    pause(0.5);
+end
+pauseFlag = true;   % Updated (17Nov2021)
+  
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% PART 1 - Range of Motion Exercise inside the workspace %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Basically subjecs free to make movement with the handle inside the
 % workspace, under no-force whatsoever. Do this exercise for max 5 minutes.
-
-fprintf('\nPART 1: Press ESCAPE  key to proceed to next stage........\n');
+null_force(instance);
 message = 'Pick the food!';
 mytext  = text(-0.04,0.186,message,'FontSize',47,'Color','w');
 pause_me(1.0);  
+fprintf('\nPART 1: Press <ESC> key once you want to proceed to the next stage...\n');
 
 while (1)
     % Obtain H-MAN handle position in real-time and plot it. Convert to mm unit!
@@ -167,6 +177,13 @@ end
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%% Part 2 - Main loop: looping through ALL trials! %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+fprintf('\nPress <Spacebar> to continue ..........\n');
+while pauseFlag     % There will be Pause to ensure subjects are ready;  Updated (17Nov2021)
+    pauseText = text(-0.085,0.14,"Ready to Push and Feel?",'FontSize',53,'Color','w','FontWeight','bold');
+    pause(0.5);   delete(pauseText);
+end
+
 fprintf('\nPART 2: Starting the resistive reaching task........\n');
 for curTrial = 1:Ntrial
 
@@ -181,8 +198,9 @@ for curTrial = 1:Ntrial
     pos_index = 0;      % index for instantaneous position (min jerk)
     counter   = 0;      % Will be used for displaying cursor purposes
     
-    % Plot the TARGET POSITION so as to show the subjects
+    % Plot the TARGET POSITION so as to show the subjects. Then beep!
     plot_image( [], m+20, targetCtr(m,1), targetCtr(m,2), targetSize );  pause_me(1.0);
+    play_tone(4000, 0.05);
     
     % While the handle is free and subject starts moving by himself. (Updated Mar/21, bug fixed for bailout)
     while (~bailOut && ~nextTrial)
@@ -221,7 +239,7 @@ for curTrial = 1:Ntrial
         % STAGE-1 : Moving towards the target (press any key to exit)
         case 1            
             % Important! Now set resistive force, preventing it from leaving the START  >>>>>>>>>>
-            instance.SetTarget('0','0','180','180','0','0','0','0','0','0','1','0');
+            instance.SetTarget('0','0','700','700','0','0','0','0','0','0','1','0');
             if (aimless_)
                 t2 = text(-0.095,0.155,'Hit the food. Feel the resistance!','FontSize',50,'FontWeight','bold','Color','w');
                 aimless_ = false; 
@@ -232,8 +250,9 @@ for curTrial = 1:Ntrial
                 if (toc > 4.0)   % this is 4-sec timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
-                    text(-0.04,0.165,'Do not give up!','FontSize',54,'Color','r','FontWeight','bold');
+                    text(-0.1,0.18,'Timeout! Do not give up!','FontSize',53,'Color','r','FontWeight','bold');
                     fprintf("   Timeout. Failed to reach to this direction!\n");
+                    pause_me(1); % added 17Nov2021
                 end
             % Note: ensure that subject is able to move beyond a distance > 0.10 m.
             else
@@ -254,7 +273,7 @@ for curTrial = 1:Ntrial
                     % Update flag to allow new 'tic'
                     timerFlag = true;   
                     % Set hold position of H-man, run once! >>>>>>>>>>>>>>
-                    hold_pos(instance);
+                    %hold_pos(instance);   (17Nov2021)
                 end           
             end      
                 
@@ -272,29 +291,29 @@ for curTrial = 1:Ntrial
                             t_pdmaxv_target,t_pd200_target,stpx, stpy, PeakVel] ];
 
             end
-            if (toc > 0.3)  % Wait for a while...
+            if (toc > 0.5)  % Wait for a while...
                 trialFlag = 3;
                 timerFlag = true;    % Update flag to allow new 'tic'   
                 fprintf('   Now moving back to START position.\n');                
                 % Ask subjects to relax before returning the hand back to start position
                 relax = plot_image([], 11, 0, 0.156, 27);
-                pause_me(1.8);
-                delete(relax);                    
+                pause_me(0.5);   % 17Nov2021
             end
                 
         % STAGE-3 : Moving BACK to the Start position (press any key to exit)
         case 3       
-            if(timerFlag)
-                % This is for generation of minimum jerk trajectory!
-                movepos = moveTo(instance,0,0,0.5);
-                xt = num2str(movepos(:,1));   yt = num2str(movepos(:,2));
-                timerFlag = false;
-            end           
+            %dist2Start
+            if( dist2Start > 0.015)   % Important revision!!! 17Nov2021
+                % Once it is near the start position...    
+                %xt = num2str(movepos(:,1));   yt = num2str(movepos(:,2));
+                %timerFlag = false;
+            %end           
             % Move the handle back to start using minimum jerk trajectory >>>>>>>>
-            if (pos_index < length(movepos))
-                pos_index = pos_index + 1;
-                instance.SetTarget( xt(pos_index,:),yt(pos_index,:),kxx,kyy,kxy,kyx,'0','0','0','0','1','0' ); 
+            %if (pos_index < length(movepos))
+                %pos_index = pos_index + 1;
+                %instance.SetTarget( xt(pos_index,:),yt(pos_index,:),kxx,kyy,kxy,kyx,'0','0','0','0','1','0' ); 
             else
+                delete(relax);                    
                 hold_pos(instance);
                 % Go to the LAST stage
                 trialFlag = 4;
@@ -307,8 +326,8 @@ for curTrial = 1:Ntrial
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
             end        
-            % Hold for 500msec at the Start position, then move to next trial
-            if (toc > 0.5)
+            % Hold for 1000msec at the Start position, then move to next trial
+            if (toc > 1.0)
                 fprintf('   Ready for the next trial~\n');
                 % Update flag so as to allow 'tic'
                 timerFlag = true;
@@ -376,17 +395,19 @@ if (~practice && ~isempty(toSave))
     %dlmwrite(strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'), toSave2);
 end
 
-% For safety: Ensure the force is null after quiting the loop!
-null_force(instance); 
-
-% Stop TCP connection every time the session ends 
-instance.CloseConnection();
+% Finally, we secure the handle even after the session ends (3Dec2021)
+hold_pos(instance);
+% No longer stop TCP connection every time the session ends (3Dec2021)
+%instance.CloseConnection();
 
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
 sound(mywav, Fs);
 fprintf('\nWarming up finished, bye!!\n');
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection........\n");
+
+end  % end of primary function %%%%%%%%%%%%%%%%%%%%%
+
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.

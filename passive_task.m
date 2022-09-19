@@ -19,6 +19,7 @@ clearvars;
 %% Robot-related parameters -----------------------------------------------
 % Obtain the instance handler, stiffness, and damping parameters.
 [instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+hold_pos(instance);  % >>>>>>>
 
 % Robot stiffness and viscuous field!
 kxx = num2str(3500); 

@@ -5,9 +5,18 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-clc;
-clear; close all; 
+function proprio_assessment (instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx)
+
+clc; close all 
 fprintf("\n--------   Joint Position Matching   --------\n");
+
+
+%% Connection has been established when you call the MainMenu.........
+% First, establish connection with H-MAN and lock the Handle! (17Nov21)
+% Obtain the instance handler, stiffness, and damping parameters.
+%[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+%hold_pos(instance);  % >>>>>>>
+
 
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
@@ -16,14 +25,6 @@ save('setting.mat', 'guiOut');   % save the updated subject's setting
 subjID = guiOut.subject;  myresultfile = guiOut.filename;  
 control= guiOut.control;  practice = guiOut.practice;
 session = guiOut.session; imgNum = str2num(guiOut.block);
-
-
-%% Then establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
-
-% Imporant to lock the position before starting!
-hold_pos(instance);
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -119,7 +120,7 @@ while (curTrial <= Ntrial) && (~bailOut)
     Xpos = num2str(out(:,1)); Ypos = num2str(out(:,2));
     
     sound(ref, Fs1);   pause(3.0);  % Ask to pay attention for reference movement    
-    null_force(instance);     % Release hold position
+    null_force(instance);     % Release hold position so as to move
 
     % (3) Move handle to target!
     trialFlag = 5;
@@ -177,19 +178,18 @@ while (curTrial <= Ntrial) && (~bailOut)
         
     % (7) Hold the handle position at the START.
     hold_pos(instance);
-
+    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
+        pauseText = text(-0.04,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
+        pause(0.5); delete(pauseText);
+    end
+        
     % (8) Play BEEP tone and display MOVE cue for 1.5 sec...
     %pause_me(1);  
     goCue = plot_image([], 10, 0, 0.1, 30);
-    play_tone(1250, 0.2);
+    play_tone(3000, 0.2);
     pause_me(delay_at_target);
+
     
-    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
-        pauseText = text(-0.013,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
-        pause(0.001);
-        delete(pauseText);
-    end
-        
     % PART 2: Let the user moves the handle to a target position ----------------------
     % (1) Preparation. Produce zero force.   
     trialFlag = 1; %a = []; 
@@ -289,22 +289,36 @@ while (curTrial <= Ntrial) && (~bailOut)
         end
     end
 
-    % (6) Hold the handle position at the START, pause for 3 sec (revised!)
-    hold_pos(instance);
-    pause_me(delay_at_target);
-    fprintf('   6. Moving to NEXT TRIAL!\n');
+    %3Dec2021: If subject keeps resisting, we have to help shifting the handle 
+    % Compute the distance between the CURSOR and the START centre
+    %dist2Start = sqrt(instance.hman_data.location_X^2 + instance.hman_data.location_Y^2);
+    while (sqrt(instance.hman_data.location_X^2 + instance.hman_data.location_Y^2) > 0.006)
+        instance.SetTarget('0','0','900','900','0','0','0','0','0','0','1','0');
+        fprintf("   Handle has not fully returned. Help to shift it back....\n");
+    end
+        %else
+        % (6) Hold the handle position at the START, pause for 3 sec (revised!)
+        hold_pos(instance);
+        pause_me(delay_at_target);
+        fprintf('   6. Moving to NEXT TRIAL!\n');
     
-    % (7) Clear the figure from old position data. First, obtain the handler to the
-    % children part of the figure, then delete the components!
-    %try    
-        %delete([h1,h2,h3]);
-        %mychild  = fig.Children.Children;
-        %delete(mychild(1:length(mychild)-6));
-    %catch
+    while pauseFlag   % Updated Mar 2021; pause the game by pressing "Spacebar"
+        pauseText = text(-0.04,0.16,"Pausing...",'FontSize',54,'Color','w','FontWeight','bold');
+        pause(0.5); delete(pauseText);
+    end
+    
+        % (7) Clear the figure from old position data. First, obtain the handler to the
+        % children part of the figure, then delete the components!
+        %try    
+            %delete([h1,h2,h3]);
+            %mychild  = fig.Children.Children;
+            %delete(mychild(1:length(mychild)-6));
+        %catch
+        %end
+        % (8) Ready to continue to the next trial...
+        curTrial = curTrial + 1;
     %end
-    % (8) Ready to continue to the next trial...
-    curTrial = curTrial + 1;
-
+    
 end
 
 
@@ -322,17 +336,15 @@ end
 if (~practice && ~isempty(toSave))
     varNames = {'trial','flag','m','angle','posX','posY','velX','velY','emerg','force'};
     toSave = array2table(toSave,'VariableNames',varNames);
-    toSave = addvars(toSave, repmat(session,[size(toSave,1) 1]),'NewVariableNames','session','after','force');
-    toSave = addvars(toSave, repmat(imgNum, [size(toSave,1) 1]),'NewVariableNames','block','after','session');
+    toSave.session = repmat(session,[size(toSave,1) 1]);
+    toSave.block   = repmat(imgNum, [size(toSave,1) 1]);
     writetable( toSave, strcat(myPath,'Trial Data\',myresultfile,'_traj.csv'));
 end 
 
-% For safety: Ensure the force is null after quiting the loop!
-null_force(instance); 
-
-% Stop TCP connection 
-instance.CloseConnection();
-fprintf("\nClosing connection to H-man................\n");
+% Finally, we secure the handle even after the session ends (3Dec2021)
+hold_pos(instance);
+% No longer stop TCP connection every time the session ends (3Dec2021)
+%instance.CloseConnection();
 
 
 %% Indicate code has ended by playing an audio message
@@ -342,6 +354,9 @@ fprintf('\nProprioception Test finished, bye!!\n');
 pause(2.0)
 close all; clear; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection..........\n");
+
+end  % end of primary function %%%%%%%%%%%%%%%%%%%%%
+
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
@@ -354,8 +369,8 @@ function bailOut = KeyPressFcn(~,evnt)
     end
     if(evnt.Key=="space")
        pauseFlag = ~pauseFlag; 
-       if (pauseFlag), fprintf("Pausing the game now.....\n");
-       else, fprintf("Continuing the game now.....\n");
+       if (pauseFlag), fprintf("Pausing the game now. Press <Spacebar> again to continue!\n\n");
+       else, fprintf("Continuing the game now...............\n");
        end
     end
 end

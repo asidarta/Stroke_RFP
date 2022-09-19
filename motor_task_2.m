@@ -5,22 +5,26 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-clc; clear; close all; 
+function motor_task_2 (instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx)
+
+clc; close all 
 fprintf("\n---------   Training sessions   --------\n");
 fprintf("Take note whether this client is a control group.... \n\n");
+
+%% Connection has been established when you call the MainMenu.........
+% First, establish connection with H-MAN and lock the Handle! (17Nov21)
+% Obtain the instance handler, stiffness, and damping parameters.
+%[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+%hold_pos(instance);  % >>>>>>>
+
 
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
 guiOut = gui( 'train' );
 save('setting.mat', 'guiOut');   % save the updated subject's setting
-subjID = guiOut.subject;  myresultfile = guiOut.filename;  
-control= guiOut.control;  practice = guiOut.practice;
+subjID  = guiOut.subject;  myresultfile = guiOut.filename;  
+control = guiOut.control;  practice = guiOut.practice;
 session = str2num(guiOut.session); imgNum = str2num(guiOut.block);
-
-
-%% Then establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -31,6 +35,10 @@ toshuffle = repmat(1:4,[1 Ntrial/4]);      % We have 4 target directions!
 
 if (mod(imgNum,2)), direct='ascend'; else, direct='descend'; end
 eachTrial = sort(toshuffle,direct);        % We shuffle the target position
+
+%tt = Shuffle (1:4);     %We have 4 taret locations
+%tt = repmat(tt,[6 1]);  %repeat 6 times per set
+%eachTrial = reshape(tt,[1 24]); %24 trials per block
 
 trialData = double.empty();
 toSave = double.empty();                   % Initialize variable to save kinematic data
@@ -61,7 +69,7 @@ trialFlag = 0;
 hold_pos(instance);  % >>>>>>>>>
 
 % Define the SIZE of the target. If empty, use Default = 16! --------------
-targetSize = 16;% - floor((session-1)/2)           
+targetSize = 15;% - floor((session-1)/2)           
 
 % Let's compute the centre of the TARGET locations (convert to mm unit).
 % Here, I define four visual target locations for reaching.
@@ -97,7 +105,7 @@ txt4 = 'Do not give up!';
 
 fprintf('\nPress <Spacebar> to continue ..........\n');
 while pauseFlag     % There will be Pause to ensure subjects are ready
-    pauseText = text(-0.06,0.14,strcat('Ready for Block-',num2str(imgNum)),'FontSize',57,'Color','w','FontWeight','bold');
+    pauseText = text(-0.07,0.14,strcat('Ready for Block-',num2str(imgNum)),'FontSize',57,'Color','w','FontWeight','bold');
     pause(0.5);   delete(pauseText);
 end
 
@@ -117,12 +125,11 @@ for curTrial = 1:Ntrial
     pos_index = 0;      % index for instantaneous position (min jerk)
     counter   = 0;      % Will be used for displaying cursor purposes
     
-    % Plot the TARGET POSITION so as to show the subjects
+    % Plot the TARGET POSITION so as to show the subjects. Then beep!
     pause_me(2*delay_at_target);
     %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
     plot_image( imgNum, m, targetCtr(m,1), targetCtr(m,2), targetSize );    
-    %pause_me(delay_at_target);
-    play_tone(4000, 0.01);
+    play_tone(4000, 0.05);
     
     % While the handle is free and subject is actively moving by himself...
     while (~bailOut && ~nextTrial)
@@ -136,7 +143,7 @@ for curTrial = 1:Ntrial
         myYpos = instance.hman_data.location_Y;
         
         % Estimate the cursor speed (in mm, and use sample rate).........
-        speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) *1000*sample_freq;
+        speed = sqrt((myXpos-lastXpos)^2 + (myYpos-lastYpos)^2) *1000*sample_freq  ;
         % Compute distance between handle-Start in real world coordinate
         dist2Start  = sqrt(myXpos^2 + myYpos^2);
         % Compute distance between handle-Target in real world coordinate
@@ -186,7 +193,7 @@ for curTrial = 1:Ntrial
         
             % If subject is too weak, still < 7.5cm from the start, we have to give timeout!
             if (dist2Start < 0.075) 
-                if (toc > 4.0)   % this is 4 seconds timeout!!!
+                if (toc > 6.0)   % this is 6 seconds timeout!!!
                     aimless_ = true;
                     trialFlag = 3;   % Mouse cursor moves back to the START
                     text(-0.04,0.16,txt4,'FontSize',52,'Color','r','FontWeight','bold');
@@ -198,9 +205,9 @@ for curTrial = 1:Ntrial
                     %fprintf("   Movement slowing down!\n");
                     tic;     % Start timer
                 end
-                % If the cursor is close enough to the TARGET, check if the movement 
-                % is SLOW enough, almost stopping. Then prepare to HOLD for 1.5 seconds.
-                if (speed < 8),    timerFlag = false;   % Update flag to allow tic again
+                % If the cursor is close enough to the TARGET, check if the movement is 
+                % SLOW enough, almost stopping. Then prepare to hold the position at the target.
+                if (speed < 20),    timerFlag = false;   % Update flag to allow tic again
                 else,     timerFlag = true;    % Update flag to allow tic again
                 end                
                 if (toc > delay_at_target)
@@ -222,7 +229,7 @@ for curTrial = 1:Ntrial
                 % Updated: compute trial-related KINEMATIC performance measures
                 [ t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,t_pd200_target,stpx,stpy,PeakVel ] = ...
                                                          get_Kinematic( trialData, targetCtr(m,:), sample_freq );
-                fprintf('   Distance: %.2f cm, and lateral error: %.2f cm\n', dist2Target*100, t_pd_target*100);
+                %fprintf('   Distance: %.2f cm, and lateral error: %.2f cm\n', dist2Target*100, t_pd_target*100);     % Ananda commented (17Nov21)
 
                 % Check criteria for reward: the distance from target
                 if (dist2Target < targetSize/900)   % && abs(t_pd_target) < targetSize/750
@@ -232,12 +239,12 @@ for curTrial = 1:Ntrial
                     fprintf('   Be more accurate!\n');
                     hitFlag = false; hitCol = 'red';
                 end
-                ang(m)
+                
                 % Then save the performance data and reward status
                 toSave2 = [toSave2; [curTrial,dist2Target,t_meanpd_target,t_area_target,t_pd_target,t_pdmaxv_target,...
                                      t_pd200_target,stpx,stpy,PeakVel,targetSize,hitFlag,ang(m),session,imgNum] ];
            end
-            if (toc > 0.3)  % just a short delay here
+            if (toc > 0.1)  % just a short delay here
                 trialFlag = 3;
                 timerFlag = true;    % Update flag to allow new 'tic'   
                 fprintf('   Now moving back to START position.\n');
@@ -260,7 +267,8 @@ for curTrial = 1:Ntrial
                     mycursor = plot(myXpos,myYpos,'o','MarkerEdgeColor','k','MarkerFaceColor','w','MarkerSize',20,'LineWidth',3); 
                     mytraj  = plot( thePoints(:,1),thePoints(:,2),hitCol,'LineWidth',4 );
                     refline = line([0,targetCtr(m,1)],[0,targetCtr(m,2)],'Color','w','LineWidth',2); 
-                    pause_me(2.5);  % Show the feedback for 2.5 sec!!
+                    % Show the feedback for 1 sec!!
+                    pause_me(delay_at_target);
                     delete(mycursor);
                 end
             end
@@ -283,18 +291,20 @@ for curTrial = 1:Ntrial
                 % After minimum jerk has finished, the handle may not go back exactly since 
                 % the robot is quite weak. The robot is quite weak, we ensure the handle 
                 % goes back to the START first.
-                %if (dist2Start >= 10)
-                %    instance.SetTarget('0','0','2000','2000','0','0','0','0','0','0','1','0'); 
-                %else
+                if (dist2Start > 0.008)
+                    %instance.SetTarget('0','0','900','900','0','0','0','0','0','0','1','0');
+                    fprintf("   Handle has not fully returned. Help to shift it back....\n");
+                else
                     % Set hold position of H-man, run only once! >>>>>>>>>>>>>>
                     hold_pos(instance);
                     % Go to the LAST stage
                     trialFlag = 4;
-                %end
-                timerFlag = true;    % Update flag to allow new 'tic'
+                    timerFlag = true;    % Update flag to allow new 'tic'
+                end
                 % Using children handler, remove performance feedback after a while..............
                 mychild  = fig.Children.Children;
-                delete(mychild(1:3));
+                %delete(mychild(1:3));
+                delete(mytraj); delete(refline);
             end
         
         % STAGE-4 : Now staying at the Start position (press any key to exit)
@@ -380,13 +390,11 @@ if (~practice && ~isempty(toSave) && ~isempty(toSave2))
                 strcat(myPath, '\Trial Data\',myresultfile,'_results.csv'));         
 end
 
-% For safety: Ensure the force is null after quiting the loop!
-null_force(instance); 
 
-% Stop TCP connection every time the session ends 
-instance.CloseConnection();
-fprintf("\nClosing connection to H-man................\n");
-
+% Finally, we secure the handle even after the session ends (3Dec2021)
+hold_pos(instance);
+% No longer stop TCP connection every time the session ends (3Dec2021)
+%instance.CloseConnection();
 
 %% Indicate code has ended by playing an audio message
 [mywav, Fs] = audioread( strcat(myPath,'\Audio\claps3.wav') );
@@ -400,20 +408,22 @@ close all; clc; % Wait to return to MainMenu?
 %estimateSize(toSave2)
 fprintf("\nReturning to Main Menu selection..........\n");
 
+end  % end of primary function %%%%%%%%%%%%%%%%%%%%%
+
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
 %  To pause the game, you can press "Spacebar".
 function bailOut = KeyPressFcn(~,evnt)
-    global bailOut; global pauseFlag;
+    global bailOut;  global pauseFlag;
     %fprintf('key event is: %s\n',evnt.Key);
     if(evnt.Key=="escape") 
        bailOut = true;  %fprintf('--> You have pressed wrongly, dear!\n');
     end
     if(evnt.Key=="space")
        pauseFlag = ~pauseFlag; 
-       if (pauseFlag), fprintf("Pausing the game now.....\n");
-       else, fprintf("Continuing the game now.....\n");
+       if (pauseFlag), fprintf("Pausing the game now. Press <Spacebar> again to continue!\n");
+       else, fprintf("Continuing the game now...............\n");
        end
     end
 end

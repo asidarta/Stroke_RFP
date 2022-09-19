@@ -5,22 +5,26 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-clc;
-clear; close all;
+function motor_assessment (instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx)
+
+clc; close all 
 fprintf("\n--------   Motor Assessment   --------\n");
+
+
+%% Connection has been established when you call the MainMenu.........
+% First, establish connection with H-MAN and lock the Handle! (17Nov21)
+% Obtain the instance handler, stiffness, and damping parameters.
+%[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+%hold_pos(instance);  % >>>>>>>
+
 
 % (0) Produce filename for the current trial based on user-defined information imgNum 
 % refers to block number; now using GUI! (4 Apr 2021).
 guiOut = gui( 'motor' );
 save('setting.mat', 'guiOut');   % save the updated subject's setting
-subjID = guiOut.subject;  myresultfile = guiOut.filename;  
-control= guiOut.control;  practice = guiOut.practice;
-session = guiOut.session; imgNum = str2num(guiOut.block);
-
-
-%% Then, establish connection with H-MAN!
-% Obtain the instance handler, stiffness, and damping parameters.
-[instance,kxx,kyy,kxy,kyx,bxx,byy,bxy,byx] = prep_robot();
+subjID  = guiOut.subject;  myresultfile = guiOut.filename;  
+control = guiOut.control;  practice = guiOut.practice;
+session = guiOut.session;  imgNum = str2num(guiOut.block);
 
 
 %% Trial-related parameters -----------------------------------------------
@@ -50,7 +54,6 @@ delay_at_target = 0.5;      % Hold at target position and inter-trial delay (sec
 %        3: move back to the start
 %        4: stay and ready for next trial
 trialFlag = 0;
-hold_pos(instance);  % >>>>>>>
  
 % Define the SIZE of the target! This is smaller than the one used in training.
 targetSize = 12;  %>>>>>>>>>>>>>>
@@ -112,7 +115,7 @@ for curTrial = 1:Ntrial
     %mytarget = plot( c(1,:)+targetCtr(m,1), c(2,:)+targetCtr(m,2),'LineWidth',5);
     plot_image( imgNum, m, targetCtr(m,1), targetCtr(m,2), targetSize );    
     %pause_me(delay_at_target);
-    play_tone(4000, 0.01);
+    play_tone(4000, 0.05);
     
     % While the handle is free and subject starts moving by himself...
     while (~bailOut && ~nextTrial)
@@ -214,10 +217,15 @@ for curTrial = 1:Ntrial
                 pos_index = pos_index + 1;
                 instance.SetTarget( xt(pos_index,:),yt(pos_index,:),kxx,kyy,kxy,kyx,bxx,byy,'0','0','1','0' ); 
             else
-                hold_pos(instance);  % >>>>>>>
-                % Go to the LAST stage
-                trialFlag = 4;
-                timerFlag = true;    % Update flag to allow new 'tic'   
+                % Check again dist2Start to ensure handle is back to start (17Nov2021)
+                if( dist2Start > 0.005 )
+                    instance.SetTarget('0','0','900','900','0','0','0','0','0','0','1','0'); 
+                else
+                    hold_pos(instance);  % >>>>>>>
+                    % Go to the LAST stage 
+                    trialFlag = 4;
+                    timerFlag = true;    % Update flag to allow new 'tic' 
+                end
             end
         
         % STAGE-4 : Now staying at the Start position (press any key to exit)
@@ -226,8 +234,8 @@ for curTrial = 1:Ntrial
                 tic;   % Start timer
                 timerFlag = false;   % Update flag so as to prevent 'tic' again
             end        
-            % Hold for 500msec at the Start position, then move to next trial
-            if (toc > 0.5)
+            % Hold for 1.0 sec at the Start position, then move to next trial
+            if (toc > 1.0 )
                 fprintf('   Ready for the next trial~\n');
                 % Update flag so as to allow 'tic'
                 timerFlag = true;
@@ -298,30 +306,30 @@ for curTrial = 1:Ntrial
 end
 
 
+
 %% Saving trajectory and trial-outcome data as tables with headers!
 % Save only when this is not Practice, and when the data content is not empty.
 if (~practice && ~isempty(toSave) && ~isempty(toSave2))
     % Saving trajectory data...
     varNames = {'trial','flag','m','angle','posX','posY','velX','velY','hit','score','elapsed','emerg','force'};
     toSave = array2table(toSave,'VariableNames',varNames);
-    toSave = addvars(toSave, repmat(session,[size(toSave,1) 1]),'NewVariableNames','session','after','force');
-    toSave = addvars(toSave, repmat(imgNum, [size(toSave,1) 1]),'NewVariableNames','block','after','session');
+    toSave.session = repmat(session,[size(toSave,1) 1]);   % add column
+    toSave.block   = repmat(imgNum, [size(toSave,1) 1]);   % add column
     writetable( toSave, strcat(myPath,'Trial Data\',myresultfile,'_traj.csv'));
     % Trial result data....
     varNames = {'curTrial','dist2Target','t_meanpd_target','t_area_target','t_pd_target','t_pdmaxv_target', ...
                 't_pd200_target','stpx','stpy','PeakVel','angle'};
     toSave2 = array2table(toSave2,'VariableNames',varNames);
-    toSave2 = addvars(toSave2, repmat(session,[size(toSave2,1) 1]),'NewVariableNames','session','after','angle');
-    toSave2 = addvars(toSave2, repmat(imgNum, [size(toSave2,1) 1]),'NewVariableNames','block','after','session');
+    toSave2.session = repmat(session,[size(toSave2,1) 1]);
+    toSave2.block   = repmat(imgNum, [size(toSave2,1) 1]);
     writetable( toSave2, strcat(myPath, 'Trial Data\',myresultfile,'_results.csv'))                
 end
-            
-% For safety: Ensure the force is null after quiting the loop!
-null_force(instance); 
+        
 
-% Stop TCP connection every time the session ends 
-instance.CloseConnection();
-fprintf("\nClosing connection to H-man................\n");
+% Finally, we secure the handle even after the session ends (3Dec2021)
+hold_pos(instance);
+% No longer stop TCP connection every time the session ends (3Dec2021)
+%instance.CloseConnection();
 
 
 %% Indicate code has ended by playing an audio message
@@ -329,8 +337,11 @@ fprintf("\nClosing connection to H-man................\n");
 sound(mywav, Fs);
 fprintf('\nMotor assessment has finished, bye!!\n');
 pause(3.0)
-close all; clear; clc;  % Wait to return to MainMenu?
+close all; clc;  % Wait to return to MainMenu?
 fprintf("\nReturning to Main Menu selection..........\n");
+
+end  % end of primary function %%%%%%%%%%%%%%%%%%%%%
+
 
 
 %% Function to detect ESC keyboard press, it returns the flag defined as global.
@@ -343,7 +354,7 @@ function bailOut = KeyPressFcn(~,evnt)
     end
     if(evnt.Key=="space")
        pauseFlag = ~pauseFlag; 
-       if (pauseFlag), fprintf("Pausing the game now.....\n");
+       if (pauseFlag), fprintf("Pausing the game now. Press <Spacebar> again to continue!\n");
        else, fprintf("Continuing the game now.....\n");
        end
     end
